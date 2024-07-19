@@ -1,0 +1,3 @@
+[submodule "api/adb_helper_api_rs"]
+	path = api/adb_helper_api_rs
+	url = https://github.com/GangJust/adb_helper_api_rs.git
