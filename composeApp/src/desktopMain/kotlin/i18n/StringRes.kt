@@ -75,6 +75,10 @@ object StringRes {
 
         val no: String
 
+        val startScrcpyWaiting: String
+
+        val scrcpyRunning: String
+
         val screenshotWaiting: String
 
         val screenshotSuccess: String
@@ -303,6 +307,10 @@ object StringRes {
             get() = "是"
         override val no: String
             get() = "否"
+        override val startScrcpyWaiting: String
+            get() = "正在启动Scrcpy.."
+        override val scrcpyRunning: String
+            get() = "Scrcpy已开启"
         override val screenshotWaiting: String
             get() = "屏幕截取中，请稍候.."
         override val screenshotSuccess: String
@@ -532,6 +540,10 @@ object StringRes {
             get() = "Yes"
         override val no: String
             get() = "No"
+        override val startScrcpyWaiting: String
+            get() = "Starting Scrcpy.."
+        override val scrcpyRunning: String
+            get() = "Scrcpy is started."
         override val screenshotWaiting: String
             get() = "Screenshot, please wait.."
         override val screenshotSuccess: String

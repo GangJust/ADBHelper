@@ -31,7 +31,10 @@ import common.compose.SelectionText
 import common.compose.Toast
 import common.compose.ToasterContainer
 import common.compose.rememberToast
+import common.res.IconRes
+import compose.common.res.icons.Scrcpy
 import i18n.StringRes
+import mvi.MsgCallback
 import mvi.MsgResult
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.skia.Image
@@ -129,6 +132,20 @@ private fun FloatButtons() {
     val device = LocalDevice.current!!
 
     Column {
+        FloatingActionButton(
+            onClick = {
+                val callback = MsgCallback {
+                    Toast.show(it)
+                }
+                viewModel.dispatch(ActivityAction.OnStartScrcpy(device, callback))
+            },
+        ) {
+            Icon(
+                imageVector = IconRes.Scrcpy,
+                contentDescription = "scrcpy"
+            )
+        }
+        Spacer(Modifier.padding(vertical = 4.dp))
         FloatingActionButton(
             onClick = {
                 Toast.show(StringRes.locale.screenshotWaiting)

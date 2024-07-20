@@ -9,8 +9,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import mvi.BaseAction
 import mvi.BaseViewModel
+import mvi.MsgCallback
 import mvi.MsgResult
 import utils.PathUtils
+import utils.ShellUtils
 import java.io.File
 
 sealed class ActivityAction : BaseAction() {
@@ -28,6 +30,11 @@ sealed class ActivityAction : BaseAction() {
         val msgResult: MsgResult<String?>,
     ) : ActivityAction()
 
+    data class OnStartScrcpy(
+        val device: Device,
+        val msgCallback: MsgCallback,
+    ) : ActivityAction()
+
     data object OnToggleFullClassName : ActivityAction()
 
     data object OnClearScreenshot : ActivityAction()
@@ -37,10 +44,12 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
     private val _activity = MutableStateFlow<Activity?>(null)
     private val _screenshot = MutableStateFlow<Screenshot?>(null)
     private val _toggleFullClassName = MutableStateFlow(false)
+    private val _isScrcpyRunning = MutableStateFlow(setOf<String>())
 
     val activity: StateFlow<Activity?> = _activity
     val screenshot: StateFlow<Screenshot?> = _screenshot
     val toggleFullClassName: StateFlow<Boolean> = _toggleFullClassName
+    val isScrcpyRunning: StateFlow<Set<String>> = _isScrcpyRunning
 
     // 切换是否显示完整类名
     // Toggles whether to display the full class name
@@ -53,6 +62,28 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
     private fun onRefresh(device: Device) {
         singleLaunchIO("refresh") {
             _activity.value = AdbServer.instance.getActivity(device)
+        }
+    }
+
+    // 启动scrcpy
+    // Start scrcpy
+    private fun onStartScrcpy(device: Device, msgCallback: MsgCallback) {
+        singleLaunchIO("startScrcpy") {
+            if (isScrcpyRunning.value.contains(device.serialNo)) {
+                msgCallback.onMsg(StringRes.locale.scrcpyRunning)
+                return@singleLaunchIO
+            }
+
+            runCatching {
+                msgCallback.onMsg(StringRes.locale.startScrcpyWaiting)
+                _isScrcpyRunning.value += device.serialNo
+                val process = ShellUtils.exec("scrcpy -s ${device.serialNo}")
+                process.waitFor()
+                _isScrcpyRunning.value -= device.serialNo
+            }.onFailure {
+                it.printStackTrace()
+                _isScrcpyRunning.value -= device.serialNo
+            }
         }
     }
 
@@ -102,6 +133,7 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
             is ActivityAction.OnRefresh -> onRefresh(action.device)
             is ActivityAction.OnScreenshot -> onScreenshot(action.device)
             is ActivityAction.OnSaveScreenshot -> onSaveScreenshot(action.device, action.msgResult)
+            is ActivityAction.OnStartScrcpy -> onStartScrcpy(action.device, action.msgCallback)
             is ActivityAction.OnClearScreenshot -> onClearScreenshot()
             is ActivityAction.OnToggleFullClassName -> onToggleFullClassName()
         }
