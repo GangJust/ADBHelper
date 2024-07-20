@@ -27,12 +27,10 @@ import androidx.compose.ui.window.rememberDialogState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.viewmodel.ActivityAction
 import app.viewmodel.ActivityViewModel
-import common.compose.SelectionText
-import common.compose.Toast
-import common.compose.ToasterContainer
-import common.compose.rememberToast
+import common.compose.*
 import common.res.IconRes
 import compose.common.res.icons.Scrcpy
+import compose.common.view.CardTextField
 import i18n.StringRes
 import mvi.MsgCallback
 import mvi.MsgResult
@@ -63,6 +61,8 @@ fun ActivityPage() {
     }
 
     ScreenshotDialogWindow()
+
+    ScrcpyConfigDialog()
 }
 
 @Composable
@@ -259,6 +259,64 @@ private fun ScreenshotDialogWindow() {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ScrcpyConfigDialog() {
+    val viewModel: ActivityViewModel = viewModel()
+    val device = LocalDevice.current!!
+    val show by viewModel.scrcpyDialog.collectAsState()
+
+    if (!show) return
+
+    var scrcpyPath by remember { mutableStateOf("") }
+    CardContentDialog(
+        onDismiss = { viewModel.dispatch(ActivityAction.OnScrcpyDialog(false)) },
+        header = {
+            Text(
+                StringRes.locale.scrcpyTitle,
+                style = MaterialTheme.typography.h6.copy(
+                    fontWeight = FontWeight.Bold,
+                ),
+                modifier = Modifier.padding(16.dp)
+            )
+        },
+        actions = {
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(
+                onClick = { viewModel.dispatch(ActivityAction.OnScrcpyDialog(false)) },
+                modifier = Modifier.padding(bottom = 8.dp, end = 16.dp)
+            ) {
+                Text(StringRes.locale.cancel)
+            }
+            TextButton(
+                onClick = {
+                    if (scrcpyPath.isEmpty()) {
+                        Toast.show(StringRes.locale.scrcpyPathEmpty)
+                        return@TextButton
+                    }
+                    viewModel.dispatch(ActivityAction.OnSaveScrcpyPath(device, scrcpyPath))
+                },
+                modifier = Modifier.padding(bottom = 8.dp, end = 16.dp)
+            ) {
+                Text(StringRes.locale.save)
+            }
+        },
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(16.dp),
+        ) {
+            CardTextField(
+                value = scrcpyPath,
+                onValueChange = { scrcpyPath = it },
+                placeholder = StringRes.locale.scrcpyPath,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            )
         }
     }
 }

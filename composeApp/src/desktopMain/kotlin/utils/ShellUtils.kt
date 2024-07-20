@@ -18,11 +18,16 @@ object ShellUtils {
      * @param directory directory
      */
     fun exec(
-        command: String,
+        command: Array<String>,
+        environment: Array<String>? = null,
         directory: File? = null,
     ): Process {
-        val array = command.split(" ").toTypedArray()
-        return build(directory, *array).start()
+        val osCommand = when {
+            OsUtils.isMac || OsUtils.isLinux -> arrayOf("sh", "-c", *command)
+            OsUtils.isWindows -> arrayOf("cmd", "/c", *command)
+            else -> throw UnsupportedOperationException("Unsupported operating system")
+        }
+        return Runtime.getRuntime().exec(osCommand, environment, directory)
     }
 
     /**
@@ -36,14 +41,14 @@ object ShellUtils {
      * @param onError onError
      */
     fun exec(
-        command: String,
+        command: Array<String>,
+        environment: Array<String>? = null,
         directory: File? = null,
         onInput: (InputStream, ShellDestroy) -> Unit,
         onOutput: (OutputStream, ShellDestroy) -> Unit,
         onError: (InputStream, ShellDestroy) -> Unit,
     ): ShellDestroy {
-        val array = command.split(" ").toTypedArray()
-        val process = build(directory, *array).start()
+        val process = exec(command, environment, directory)
         val onDestroy = ShellDestroy { process.destroy() }
         process.inputStream.use { onInput(it, onDestroy) }
         process.outputStream.use { onOutput(it, onDestroy) }
@@ -52,18 +57,20 @@ object ShellUtils {
         return onDestroy
     }
 
+
     /**
-     * 构建ProcessBuilder
-     * Build ProcessBuilder
+     * 设置环境变量
+     * Set environment variables
      *
-     * @param directory directory
-     * @param commands commands
+     * @param name name
+     * @param value value
      */
-    private fun build(
-        directory: File?,
-        vararg commands: String,
-    ): ProcessBuilder {
-        return ProcessBuilder(*commands)
-            .directory(directory)
+    fun environment(name: String, value: String): Array<String> {
+        return System.getenv()
+            .map {
+                if (it.key == name) "${it.key}=${it.value}:$value"
+                else "${it.key}=${it.value}"
+            }
+            .toTypedArray()
     }
 }

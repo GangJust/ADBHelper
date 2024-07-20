@@ -75,6 +75,14 @@ object StringRes {
 
         val no: String
 
+        val scrcpyTitle: String
+
+        val scrcpyPath: String
+
+        val scrcpyPathEmpty: String
+
+        val noFoundScrcpyPath: String
+
         val startScrcpyWaiting: String
 
         val scrcpyRunning: String
@@ -307,6 +315,14 @@ object StringRes {
             get() = "是"
         override val no: String
             get() = "否"
+        override val scrcpyTitle: String
+            get() = "Scrcpy路径"
+        override val scrcpyPath: String
+            get() = "请设置Scrcpy路径"
+        override val scrcpyPathEmpty: String
+            get() = "Scrcpy路径为空"
+        override val noFoundScrcpyPath: String
+            get() = "未找到Scrcpy路径"
         override val startScrcpyWaiting: String
             get() = "正在启动Scrcpy.."
         override val scrcpyRunning: String
@@ -540,6 +556,14 @@ object StringRes {
             get() = "Yes"
         override val no: String
             get() = "No"
+        override val scrcpyTitle: String
+            get() = "Scrcpy Path"
+        override val scrcpyPath: String
+            get() = "Please set the Scrcpy path"
+        override val scrcpyPathEmpty: String
+            get() = "Scrcpy path is empty"
+        override val noFoundScrcpyPath: String
+            get() = "Scrcpy path not found"
         override val startScrcpyWaiting: String
             get() = "Starting Scrcpy.."
         override val scrcpyRunning: String

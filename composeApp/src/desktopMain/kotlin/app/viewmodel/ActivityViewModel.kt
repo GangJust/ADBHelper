@@ -11,6 +11,7 @@ import mvi.BaseAction
 import mvi.BaseViewModel
 import mvi.MsgCallback
 import mvi.MsgResult
+import utils.ConfigUtils
 import utils.PathUtils
 import utils.ShellUtils
 import java.io.File
@@ -30,25 +31,36 @@ sealed class ActivityAction : BaseAction() {
         val msgResult: MsgResult<String?>,
     ) : ActivityAction()
 
+    data object OnToggleFullClassName : ActivityAction()
+
+    data object OnClearScreenshot : ActivityAction()
+
+    data class OnScrcpyDialog(
+        val show: Boolean,
+    ) : ActivityAction()
+
+    data class OnSaveScrcpyPath(
+        val device: Device,
+        val scrcpyPath: String,
+    ) : ActivityAction()
+
     data class OnStartScrcpy(
         val device: Device,
         val msgCallback: MsgCallback,
     ) : ActivityAction()
-
-    data object OnToggleFullClassName : ActivityAction()
-
-    data object OnClearScreenshot : ActivityAction()
 }
 
 class ActivityViewModel : BaseViewModel<ActivityAction>() {
     private val _activity = MutableStateFlow<Activity?>(null)
     private val _screenshot = MutableStateFlow<Screenshot?>(null)
     private val _toggleFullClassName = MutableStateFlow(false)
+    private val _scrcpyDialog = MutableStateFlow(false)
     private val _isScrcpyRunning = MutableStateFlow(setOf<String>())
 
     val activity: StateFlow<Activity?> = _activity
     val screenshot: StateFlow<Screenshot?> = _screenshot
     val toggleFullClassName: StateFlow<Boolean> = _toggleFullClassName
+    val scrcpyDialog: StateFlow<Boolean> = _scrcpyDialog
     val isScrcpyRunning: StateFlow<Set<String>> = _isScrcpyRunning
 
     // 切换是否显示完整类名
@@ -65,19 +77,56 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
         }
     }
 
+    // 显示/隐藏scrcpy路径对话框
+    // Show/hide scrcpy path dialog
+    private fun onScrcpyDialog(show: Boolean) {
+        _scrcpyDialog.value = show
+    }
+
+    // 保存scrcpy路径
+    // Save scrcpy path
+    private fun onSaveScrcpyPath(device: Device, scrcpyPath: String) {
+        singleLaunchIO("onSaveScrcpyPath") {
+            val config = ConfigUtils.read()
+            config.setProperty("scrcpy.path", scrcpyPath)
+            ConfigUtils.write(config)
+
+            // start scrcpy
+            onStartScrcpy(device) { /* nothing */ }
+        }
+    }
+
     // 启动scrcpy
     // Start scrcpy
     private fun onStartScrcpy(device: Device, msgCallback: MsgCallback) {
         singleLaunchIO("startScrcpy") {
+            // 检查是否已经启动scrcpy|Check if scrcpy has been started
             if (isScrcpyRunning.value.contains(device.serialNo)) {
                 msgCallback.onMsg(StringRes.locale.scrcpyRunning)
                 return@singleLaunchIO
             }
 
+            // 检查scrcpy路径|Check scrcpy path
+            val config = ConfigUtils.read()
+            val scrcpyPath = config.getProperty("scrcpy.path", "")
+            val adbPath = config.getProperty("adb.path", "")
+
+            if (scrcpyPath.isEmpty()) {
+                msgCallback.onMsg(StringRes.locale.noFoundScrcpyPath)
+                _scrcpyDialog.value = true
+                return@singleLaunchIO
+            }
+
+            // 启动scrcpy|Start scrcpy
             runCatching {
                 msgCallback.onMsg(StringRes.locale.startScrcpyWaiting)
+                _scrcpyDialog.value = false
                 _isScrcpyRunning.value += device.serialNo
-                val process = ShellUtils.exec("scrcpy -s ${device.serialNo}")
+                val process = ShellUtils.exec(
+                    command = arrayOf("scrcpy -s ${device.serialNo}"),
+                    environment = ShellUtils.environment("PATH", "$adbPath:$scrcpyPath"),
+                )
+                msgCallback.onMsg(process.errorReader().readText().trim())
                 process.waitFor()
                 _isScrcpyRunning.value -= device.serialNo
             }.onFailure {
@@ -133,9 +182,11 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
             is ActivityAction.OnRefresh -> onRefresh(action.device)
             is ActivityAction.OnScreenshot -> onScreenshot(action.device)
             is ActivityAction.OnSaveScreenshot -> onSaveScreenshot(action.device, action.msgResult)
-            is ActivityAction.OnStartScrcpy -> onStartScrcpy(action.device, action.msgCallback)
             is ActivityAction.OnClearScreenshot -> onClearScreenshot()
             is ActivityAction.OnToggleFullClassName -> onToggleFullClassName()
+            is ActivityAction.OnScrcpyDialog -> onScrcpyDialog(action.show)
+            is ActivityAction.OnSaveScrcpyPath -> onSaveScrcpyPath(action.device, action.scrcpyPath)
+            is ActivityAction.OnStartScrcpy -> onStartScrcpy(action.device, action.msgCallback)
         }
     }
 }
