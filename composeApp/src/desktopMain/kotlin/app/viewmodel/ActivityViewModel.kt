@@ -119,18 +119,25 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
 
             // 启动scrcpy|Start scrcpy
             runCatching {
-                msgCallback.onMsg(StringRes.locale.startScrcpyWaiting)
                 _scrcpyDialog.value = false
                 _isScrcpyRunning.value += device.serialNo
+
+                msgCallback.onMsg(StringRes.locale.startScrcpyWaiting)
+
                 val process = ShellUtils.exec(
                     command = arrayOf("scrcpy -s ${device.serialNo}"),
                     environment = ShellUtils.environment("PATH", "$adbPath:$scrcpyPath"),
                 )
-                msgCallback.onMsg(process.errorReader().readText().trim())
+
+                val errMsg = process.errorReader().readText().trim()
+                if (errMsg.isNotEmpty()) {
+                    msgCallback.onMsg(errMsg)
+                }
+
                 process.waitFor()
                 _isScrcpyRunning.value -= device.serialNo
             }.onFailure {
-                it.printStackTrace()
+                msgCallback.onMsg(it.message ?: "")
                 _isScrcpyRunning.value -= device.serialNo
             }
         }
