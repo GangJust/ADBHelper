@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -24,15 +25,16 @@ fun CardButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(8.dp),
-    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    backgroundColor: Color = MaterialTheme.colors.secondary,
+    contentColor: Color = contentColorFor(backgroundColor),
     shape: Shape = RoundedCornerShape(8.dp),
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Surface(
-        color = colors.backgroundColor(enabled).value,
-        contentColor = LocalContentColor.current,
+        color = backgroundColor,
+        contentColor = contentColor,
         modifier = modifier
             .clip(shape)
             .combinedClickable(

@@ -63,12 +63,21 @@ object ShellUtils {
      * Set environment variables
      *
      * @param name name
-     * @param value value
+     * @param values value
      */
-    fun environment(name: String, value: String): Array<String> {
+    fun environment(
+        name: String,
+        vararg values: String,
+    ): Array<String> {
+        val symbol = when {
+            OsUtils.isMac || OsUtils.isLinux -> ":"
+            OsUtils.isWindows -> ";"
+            else -> throw UnsupportedOperationException("Unsupported operating system")
+        }
+
         return System.getenv()
             .map {
-                if (it.key == name) "${it.key}=${it.value}:$value"
+                if (it.key.lowercase() == name.lowercase()) "${it.key}=${it.value}$symbol${values.joinToString(symbol)}"
                 else "${it.key}=${it.value}"
             }
             .toTypedArray()

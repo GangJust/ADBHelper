@@ -126,7 +126,7 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
 
                 val process = ShellUtils.exec(
                     command = arrayOf("scrcpy -s ${device.serialNo}"),
-                    environment = ShellUtils.environment("PATH", "$adbPath:$scrcpyPath"),
+                    environment = ShellUtils.environment("PATH", adbPath, scrcpyPath),
                 )
 
                 val errMsg = process.errorReader().readText().trim()

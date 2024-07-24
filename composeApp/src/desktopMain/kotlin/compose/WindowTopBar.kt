@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
+import androidx.compose.material.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,12 +30,8 @@ fun ActionIconButton(
         modifier = modifier.padding(horizontal = 4.dp),
         shape = CircleShape,
         contentPadding = PaddingValues(12.dp),
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = Color.Transparent,
-            contentColor = Color.Transparent,
-            disabledContentColor = Color.Transparent,
-            disabledBackgroundColor = Color.Transparent,
-        ),
+        contentColor = LocalContentColor.current,
+        backgroundColor = Color.Transparent,
         onClick = onClick,
         onLongClick = onLongClick,
         enabled = enabled,
