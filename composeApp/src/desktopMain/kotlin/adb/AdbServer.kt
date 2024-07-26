@@ -78,6 +78,11 @@ class AdbServer private constructor() {
     external fun killServer(): String
 
     /**
+     * adb服务是否在应用区间被杀死
+     */
+    external fun isKilled(): Boolean
+
+    /**
      * 获取adb版本|Get adb version
      */
     external fun version(): Version

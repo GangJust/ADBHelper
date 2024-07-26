@@ -4,6 +4,7 @@ import adb.AdbServer
 import adb.entity.Activity
 import adb.entity.Device
 import adb.entity.Screenshot
+import entity.AppConfig
 import i18n.StringRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,6 @@ import mvi.BaseAction
 import mvi.BaseViewModel
 import mvi.MsgCallback
 import mvi.MsgResult
-import utils.ConfigUtils
 import utils.PathUtils
 import utils.ShellUtils
 import java.io.File
@@ -87,10 +87,7 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
     // Save scrcpy path
     private fun onSaveScrcpyPath(device: Device, scrcpyPath: String) {
         singleLaunchIO("onSaveScrcpyPath") {
-            val config = ConfigUtils.read()
-            config.setProperty("scrcpy.path", scrcpyPath)
-            ConfigUtils.write(config)
-
+            AppConfig.write(scrcpyPath = scrcpyPath)
             // start scrcpy
             onStartScrcpy(device) { /* nothing */ }
         }
@@ -107,11 +104,9 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
             }
 
             // 检查scrcpy路径|Check scrcpy path
-            val config = ConfigUtils.read()
-            val scrcpyPath = config.getProperty("scrcpy.path", "")
-            val adbPath = config.getProperty("adb.path", "")
+            val config = AppConfig.read()
 
-            if (scrcpyPath.isEmpty()) {
+            if (config.scrcpyPath.isEmpty()) {
                 msgCallback.onMsg(StringRes.locale.noFoundScrcpyPath)
                 _scrcpyDialog.value = true
                 return@singleLaunchIO
@@ -126,7 +121,7 @@ class ActivityViewModel : BaseViewModel<ActivityAction>() {
 
                 val process = ShellUtils.exec(
                     command = arrayOf("scrcpy -s ${device.serialNo}"),
-                    environment = ShellUtils.environment("PATH", adbPath, scrcpyPath),
+                    environment = ShellUtils.environment("PATH", config.adbPath, config.scrcpyPath),
                 )
 
                 val errMsg = process.errorReader().readText().trim()

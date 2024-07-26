@@ -1,7 +1,6 @@
 package common.compose
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +32,7 @@ fun CardButton(
     content: @Composable () -> Unit,
 ) {
     Surface(
-        color = backgroundColor,
+        color = if (enabled) backgroundColor else Color.Transparent,
         contentColor = contentColor,
         modifier = modifier
             .clip(shape)

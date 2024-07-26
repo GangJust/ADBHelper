@@ -20,19 +20,19 @@ import compose.WindowContainer
 import compose.WindowTopBar
 import compose.common.res.icons.Next
 import compose.common.view.CardTextField
+import entity.AppConfig
 import i18n.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import utils.ConfigUtils
 import window.AppWindow
 import java.io.File
 
 fun main() = application {
-    val config = ConfigUtils.read()
-    val adbPath = config.getProperty("adb.path") ?: ""
-    if (adbPath.isBlank() || !File(adbPath).exists()) {
+    val config = AppConfig.read()
+    val adbPath = config.adbPath
+    if (adbPath.isEmpty() || !File(adbPath).exists()) {
         InitApp()
     } else {
         MainApp()
@@ -113,9 +113,7 @@ fun ApplicationScope.InitApp() {
                 if (susscess) {
                     LaunchedEffect(Unit) {
                         // 保存配置
-                        val config = ConfigUtils.read()
-                        config.setProperty("adb.path", pathValue)
-                        ConfigUtils.write(config)
+                        AppConfig.write(adbPath = pathValue)
 
                         // 退出应用
                         delay(3000)
@@ -206,18 +204,15 @@ fun ApplicationScope.MainApp() {
         val coroutineScope = rememberCoroutineScope()
         LaunchedEffect(Unit) {
             coroutineScope.launch(Dispatchers.IO) {
-                val config = ConfigUtils.read()
-                AdbServer.initialize(config.getProperty("adb.path"))
+                val config = AppConfig.read()
+                AdbServer.initialize(config.adbPath)
                 AdbServer.instance.startServer()
             }
         }
 
         DisposableEffect(Unit) {
             onDispose {
-                // val config = ConfigUtils.read()
-                // val adbPath = config.getProperty("adb.path")
                 AdbServer.instance.killServer()
-                // Runtime.getRuntime().exec("adb kill-server", null, File(adbPath))
             }
         }
 

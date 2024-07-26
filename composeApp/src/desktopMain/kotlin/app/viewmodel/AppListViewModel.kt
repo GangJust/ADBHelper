@@ -29,6 +29,11 @@ sealed class AppListAction : BaseAction() {
         val reload: Boolean = false,
     ) : AppListAction()
 
+    data class RefreshAppItem(
+        val device: Device,
+        val desc: AppDesc,
+    ) : AppListAction()
+
     data class InstallApk(
         val device: Device,
         val apkPath: String,
@@ -237,6 +242,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
             reducePackages.forEach { pkg ->
                 appList.value = appList.value.filter { desc -> desc.packageName != pkg }
                 _allAppList.value = _allAppList.value.filter { desc -> desc.packageName != pkg }
+                updateSearchText(_searchText.value)
             }
         }
 
@@ -254,11 +260,48 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
                 withContext(Dispatchers.Main) {
                     appList.value += desc
                     _allAppList.value += desc
+                    updateSearchText(_searchText.value)
                 }
             }
         }
 
         return Pair(reducePackages, increasePackages) // reduce and increase
+    }
+
+    // 刷新单个应用
+    // Refresh a single app
+    private fun refreshAppItem(
+        device: Device,
+        desc: AppDesc,
+    ) {
+        singleLaunchIO("refreshAppItem") {
+            val remotePkg = AdbServer.instance.getPackages(device, desc.isSystem)
+            val optionList = if (desc.isSystem) _systemAppList else _userAppList
+            if (remotePkg.contains(desc.packageName)) { // is replaced
+                val newDesc = AdbServer.instance.getAppDesc(device, desc.packageName)
+
+                //
+                val optList = optionList.value.toMutableList()
+                val optIndexOf = optList.indexOfFirst { it.packageName == desc.packageName }
+                optList.removeAt(optIndexOf)
+                optList.add(optIndexOf, newDesc)
+                optionList.value = optList
+
+                //
+                val allList = _allAppList.value.toMutableList()
+                val allIndexOf = allList.indexOf(desc)
+                allList.removeAt(allIndexOf)
+                allList.add(allIndexOf, newDesc)
+                _allAppList.value = allList
+
+                //
+                updateSearchText(_searchText.value)
+            } else { // is uninstalled
+                optionList.value = optionList.value.filter { it.packageName != desc.packageName }
+                _allAppList.value = _allAppList.value.filter { it.packageName != desc.packageName }
+                updateSearchText(_searchText.value)
+            }
+        }
     }
 
     // 安装 APK
@@ -385,6 +428,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
             is AppListAction.UpdateSearchText -> updateSearchText(action.text)
             is AppListAction.GetAppList -> getAppList(action.device)
             is AppListAction.RefreshAppList -> refreshAppList(action.device, action.reload)
+            is AppListAction.RefreshAppItem -> refreshAppItem(action.device, action.desc)
             is AppListAction.InstallApk -> installApk(action.device, action.apkPath, action.msgCallback)
             is AppListAction.UninstallApp -> uninstallApp(action.device, action.desc, action.msgCallback)
             is AppListAction.ClearDataApp -> clearDataApp(action.device, action.desc, action.msgCallback)

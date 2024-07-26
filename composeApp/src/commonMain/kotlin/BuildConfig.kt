@@ -1,5 +1,5 @@
 package compose
 
 object BuildConfig {
-    const val DEBUG = false
+    const val DEBUG = true
 }

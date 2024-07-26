@@ -35,7 +35,6 @@ import utils.PathUtils
 import window.LocalWindowScope
 import java.awt.datatransfer.DataFlavor
 import java.awt.dnd.DnDConstants
-import java.util.Locale
 
 @Composable
 fun AppListPage() {
@@ -316,6 +315,7 @@ private fun InstallDialog(
 @Composable
 private fun AppList() {
     val viewModel: AppListViewModel = viewModel()
+    val device = LocalDevice.current!!
 
     var isShowOptionDialog by remember { mutableStateOf(false) }
     var optionMenu by remember { mutableStateOf("") }
@@ -334,6 +334,9 @@ private fun AppList() {
             items(currentAppList) { it ->
                 AppListItem(
                     desc = it,
+                    onRefresh = { app ->
+                        viewModel.dispatch(AppListAction.RefreshAppItem(device, app))
+                    },
                     onMenuClick = { menu, app ->
                         isShowOptionDialog = true
                         optionMenu = menu
@@ -363,6 +366,7 @@ private fun AppList() {
 @Composable
 private fun AppListItem(
     desc: AppDesc,
+    onRefresh: (desc: AppDesc) -> Unit,
     onMenuClick: (menu: String, desc: AppDesc) -> Unit,
 ) {
     val optionMenus = listOf(
@@ -446,38 +450,57 @@ private fun AppListItem(
         Box(
             modifier = Modifier.fillMaxWidth(),
         ) {
-            var expanded by remember { mutableStateOf(false) }
-
-            IconButton(
+            Row(
                 modifier = Modifier.align(Alignment.TopEnd),
-                onClick = {
-                    expanded = true
-                },
             ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_more_vert),
-                    contentDescription = "More",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+                // refresh
+                IconButton(
+                    onClick = {
+                        onRefresh(desc)
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_refresh),
+                        contentDescription = "Refresh",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
 
-            CursorDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = {
-                    expanded = false
-                },
-            ) {
-                optionMenus.forEach { menu ->
-                    DropdownMenuItem(
-                        enabled = menu.second,
+                // menu
+                Box {
+                    var expanded by remember { mutableStateOf(false) }
+
+                    IconButton(
                         onClick = {
-                            expanded = false
-                            onMenuClick(menu.first, desc)
+                            expanded = true
                         },
                     ) {
-                        Text(
-                            text = menu.first,
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_more_vert),
+                            contentDescription = "More",
+                            modifier = Modifier.size(20.dp)
                         )
+                    }
+
+                    CursorDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                            expanded = false
+                        },
+                    ) {
+                        optionMenus.forEach { menu ->
+                            DropdownMenuItem(
+                                enabled = menu.second,
+                                onClick = {
+                                    expanded = false
+                                    onMenuClick(menu.first, desc)
+                                },
+                            ) {
+                                Text(
+                                    text = menu.first,
+                                )
+                            }
+                        }
                     }
                 }
             }
