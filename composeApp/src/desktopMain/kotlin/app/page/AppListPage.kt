@@ -80,7 +80,7 @@ private fun TopBar() {
             val systemAppList by viewModel.systemAppList.collectAsState()
             TabItem(
                 index = 1,
-                title = String.format(StringRes.locale.allApp, systemAppList.size),
+                title = String.format(StringRes.locale.systemApp, systemAppList.size),
                 selected = currentTabIndex == 1,
                 onSelect = {
                     viewModel.dispatch(AppListAction.SelectedTab(it))
@@ -91,7 +91,7 @@ private fun TopBar() {
             val userAppList by viewModel.userAppList.collectAsState()
             TabItem(
                 index = 2,
-                title = String.format(StringRes.locale.allApp, userAppList.size),
+                title = String.format(StringRes.locale.userApp, userAppList.size),
                 selected = currentTabIndex == 2,
                 onSelect = {
                     viewModel.dispatch(AppListAction.SelectedTab(it))
