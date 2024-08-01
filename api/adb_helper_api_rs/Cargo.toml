@@ -1,0 +1,3 @@
+[workspace]
+members = ["adb", "api-jni", "example", "logcat-client"]
+resolver = "2"
