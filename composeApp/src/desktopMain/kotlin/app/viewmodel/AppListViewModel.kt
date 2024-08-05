@@ -92,30 +92,35 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
     val searchText: StateFlow<String> = _searchText
     val searchAppList: StateFlow<List<AppDesc>> = _searchAppList
 
-    private var device: Device? = null
-    private val appCacheFileName = "apps.json"
+    private val appCache = "apps.json"
 
     // private val mutex = Mutex()
 
-    private fun _getAppsJson(): JsonObject {
-        return CacheUtils.readCacheJsonObject(appCacheFileName)
+    // 读取缓存的应用列表
+    // Read cached application list
+    private fun _readAppsCache(device: Device) {
+        val apps = CacheUtils.readJsonObj("${device.displaySerialNo}/$appCache")
+        _systemAppList.value = apps.getAsJsonArray("system_apps")
+            ?.map { CacheUtils.gson.fromJson(it, AppDesc::class.java) }
+            ?: emptyList()
+
+        _userAppList.value = apps.getAsJsonArray("user_apps")
+            ?.map { CacheUtils.gson.fromJson(it, AppDesc::class.java) }
+            ?: emptyList()
+
+        _allAppList.value = _systemAppList.value + _userAppList.value
     }
 
-    private fun _saveAppsJson(device: Device) {
+    // 保存应用列表至缓存
+    // Save the application list to cache
+    private fun _saveAppsCache(device: Device) {
         runCatching {
-            val jsons = _getAppsJson()
-            val deviceJson = JsonObject()
-
+            val apps = JsonObject()
             val systemApps = CacheUtils.gson.toJsonTree(systemAppList.value)
             val userApps = CacheUtils.gson.toJsonTree(userAppList.value)
-
-            deviceJson.add("system_apps", systemApps)
-            deviceJson.add("user_apps", userApps)
-
-            jsons.remove(device.displaySerialNo) // 删除旧的
-            jsons.add(device.displaySerialNo, deviceJson) // 添加新的
-
-            CacheUtils.writeCacheJsonJsonObject(appCacheFileName, jsons)
+            apps.add("system_apps", systemApps)
+            apps.add("user_apps", userApps)
+            CacheUtils.writeJson("${device.displaySerialNo}/$appCache", apps)
         }.onFailure {
             it.printStackTrace()
         }
@@ -167,25 +172,6 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
         }
     }
 
-    // 缓存的应用列表
-    // Cached application list
-    private suspend fun getAppsCache(device: Device) {
-        withContext(Dispatchers.IO) {
-            val packagesJson = _getAppsJson()
-            val deviceApps = packagesJson.getAsJsonObject(device.displaySerialNo)
-
-            _systemAppList.value = deviceApps?.getAsJsonArray("system_apps")
-                ?.map { CacheUtils.gson.fromJson(it, AppDesc::class.java) }
-                ?: emptyList()
-
-            _userAppList.value = deviceApps?.getAsJsonArray("user_apps")
-                ?.map { CacheUtils.gson.fromJson(it, AppDesc::class.java) }
-                ?: emptyList()
-
-            _allAppList.value = _systemAppList.value + _userAppList.value
-        }
-    }
-
     // 清除应用列表缓存
     // Clear the app list cache
     private fun clearAppsCache() {
@@ -197,17 +183,18 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
     // 获取应用列表
     // Get app list
     private fun getAppList(device: Device) {
-        this.device = device // 保存设备信息
-
         singleLaunchIO("getAppList") {
-            getAppsCache(device)
+            _readAppsCache(device)
             refreshAppList(device, false)
         }
     }
 
     // 刷新应用列表
     // Refresh app list
-    private fun refreshAppList(device: Device, reload: Boolean) {
+    private fun refreshAppList(
+        device: Device,
+        reload: Boolean,
+    ) {
         singleLaunchIO("refreshAppList") {
             // clear cache
             if (reload) {
@@ -225,6 +212,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
             val systemResult = systemAsync.await()
             val userResult = userAsync.await()
             withContext(Dispatchers.Main) { _isWaiting.value = false }
+
+            _saveAppsCache(device)
         }
     }
 
@@ -415,11 +404,6 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
                 msgResult.onResult(trim, downloadPath)
             }
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        _saveAppsJson(device!!)
     }
 
     override fun dispatch(action: AppListAction) {

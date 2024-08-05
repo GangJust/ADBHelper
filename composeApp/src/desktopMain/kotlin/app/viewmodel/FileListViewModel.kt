@@ -1,9 +1,9 @@
 package app.viewmodel
 
 import adb.AdbServer
+import adb.entity.AppDesc
 import adb.entity.Device
 import adb.entity.FileDesc
-import com.google.gson.JsonObject
 import entity.Bookmark
 import i18n.StringRes
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -120,55 +120,35 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
     val currPath: StateFlow<String> = _currPath
     val fileList: StateFlow<List<FileDesc>> = _fileList
 
-    private val bookmarkCacheName = "bookmarks.json"
+    private val bookmarksCache = "bookmarks.json"
 
-    private fun _getBookmarksJson(): JsonObject {
-        runCatching {
-            return CacheUtils.readCacheJsonObject(bookmarkCacheName)
-        }.onFailure {
-            it.printStackTrace()
-        }
-
-        return JsonObject()
+    private fun _readBookmarksCache(device: Device) {
+        val arr = CacheUtils.readJsonArr("${device.displaySerialNo}/$bookmarksCache")
+        _bookmarks.value = arr.map { CacheUtils.gson.fromJson(it, Bookmark::class.java) }
     }
 
-    private fun _saveBookmarksJson(device: Device) {
-        runCatching {
-            val json = _getBookmarksJson()
-            json.remove(device.displaySerialNo)
-            json.add(device.displaySerialNo, CacheUtils.gson.toJsonTree(_bookmarks.value))
-
-            CacheUtils.writeCacheJsonJsonObject(bookmarkCacheName, json)
-        }.onFailure {
-            it.printStackTrace()
-        }
+    private fun _saveBookmarksCache(device: Device) {
+        val bookmarks = CacheUtils.gson.toJsonTree(_bookmarks.value)
+        CacheUtils.writeJson("${device.displaySerialNo}/$bookmarksCache", bookmarks)
     }
 
     // 书签对话框
     // Bookmark dialog
-    private fun onBookmarkDialog(
-        isShowing: Boolean,
-    ) {
+    private fun onBookmarkDialog(isShowing: Boolean) {
         _showBookmark.value = isShowing
     }
 
     // 书签编辑对话框
     // Bookmark edit dialog
-    private fun onBookmarkEditDialog(
-        bookmark: Bookmark?,
-    ) {
+    private fun onBookmarkEditDialog(bookmark: Bookmark?) {
         _showBookmarkEdit.value = bookmark
     }
 
     // 获取书签列表
     // Get bookmark list
-    private fun getBookmarks(
-        device: Device,
-    ) {
+    private fun getBookmarks(device: Device) {
         singleLaunchIO("getBookmarks") {
-            val json = _getBookmarksJson()
-            val bookmarks = json.getAsJsonArray(device.displaySerialNo)
-            _bookmarks.value = CacheUtils.gson.fromJson(bookmarks, Array<Bookmark>::class.java).toList()
+            _readBookmarksCache(device)
         }
     }
 
@@ -181,17 +161,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
     ) {
         singleLaunchIO("onAddBookmark") {
             runCatching {
-                val json = _getBookmarksJson()
-                val bookmarks = json.getAsJsonArray(device.displaySerialNo)
-                if (bookmarks == null) {
-                    json.add(device.displaySerialNo, CacheUtils.gson.toJsonTree(listOf(bookmark)))
-                } else {
-                    bookmarks.asJsonArray.add(CacheUtils.gson.toJsonTree(bookmark))
-                    json.add(device.displaySerialNo, bookmarks)
-                }
-
-                CacheUtils.writeCacheJsonJsonObject(bookmarkCacheName, json)
-
+                _bookmarks.value += bookmark
+                _saveBookmarksCache(device)
                 msgCallback.onMsg(StringRes.locale.bookmarkAddedSuccess)
             }.onFailure {
                 msgCallback.onMsg(String.format(StringRes.locale.bookmarkAddedFailure, it.message))
@@ -208,25 +179,19 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
     ) {
         singleLaunchIO("onSaveBookmark") {
             runCatching {
-                val bookmarks = _bookmarks.value.toMutableList()
-                val firstIndex = bookmarks.indexOfFirst {
+                val optBookmarks = _bookmarks.value.toMutableList()
+                val firstIndex = optBookmarks.indexOfFirst {
                     bookmark.created == it.created
                 }
-
                 if (firstIndex == -1) {
                     msgCallback.onMsg(StringRes.locale.bookmarkNotFound)
                     return@singleLaunchIO
                 }
 
-                bookmarks[firstIndex] = bookmark
+                optBookmarks[firstIndex] = bookmark
+                _bookmarks.value = optBookmarks
+                _saveBookmarksCache(device)
 
-                val json = _getBookmarksJson()
-                json.remove(device.displaySerialNo)
-                json.add(device.displaySerialNo, CacheUtils.gson.toJsonTree(bookmarks))
-
-                CacheUtils.writeCacheJsonJsonObject(bookmarkCacheName, json)
-
-                getBookmarks(device)
                 msgCallback.onMsg(StringRes.locale.bookmarkSavedSuccess)
             }.onFailure {
                 msgCallback.onMsg(String.format(StringRes.locale.bookmarkSavedFailure, it.message))
@@ -243,19 +208,14 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
     ) {
         singleLaunchIO("onDeleteBookmark") {
             runCatching {
-                val bookmarks = _bookmarks.value.filter { it.created != bookmark.created }
-                if (bookmarks.size == _bookmarks.value.size) {
+                val optBookmarks = _bookmarks.value.filter { it.created != bookmark.created }
+                if (optBookmarks.size == _bookmarks.value.size) {
                     msgCallback.onMsg(StringRes.locale.bookmarkNotFound)
                     return@singleLaunchIO
                 }
 
-                val json = _getBookmarksJson()
-                json.remove(device.displaySerialNo)
-                json.add(device.displaySerialNo, CacheUtils.gson.toJsonTree(bookmarks))
-
-                CacheUtils.writeCacheJsonJsonObject(bookmarkCacheName, json)
-
-                getBookmarks(device)
+                _bookmarks.value = optBookmarks
+                _saveBookmarksCache(device)
                 msgCallback.onMsg(StringRes.locale.bookmarkDeletedSuccess)
             }.onFailure {
                 msgCallback.onMsg(String.format(StringRes.locale.bookmarkDeletedFailure, it.message))

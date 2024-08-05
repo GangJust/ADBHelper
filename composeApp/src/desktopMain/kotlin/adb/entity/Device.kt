@@ -32,20 +32,25 @@ data class Device(
         return "Device(serialNo=$displaySerialNo, props=${props.size})"
     }
 
-    // 设备名称和型号
-    // Device name and model
-    val brandModel: String
-        get() = "${props.getOrDefault("ro.product.brand", "")} $model".trim()
-
-    // 设备名称、型号和序列号
-    // Device name, model and serial number
-    val brandModelSerialNo: String
-        get() = "${props.getOrDefault("ro.product.brand", "")} $model ($displaySerialNo)".trim()
+    // 设备品牌
+    // Device brand
+    val brand: String
+        get() = props.getOrDefault("ro.product.brand", "")
 
     // 设备序列号，尽量获取到真实的序列号
     // Device serial number, try to get the real serial number
     val displaySerialNo: String
         get() = props["ro.boot.serialno"] ?: props["ro.serialno"] ?: serialNo
+
+    // 设备品牌和型号
+    // Device brand and model
+    val brandModel: String
+        get() = "$brand $model".trim()
+
+    // 设备品牌、型号和序列号
+    // Device brand, model and serial number
+    val brandModelSerialNo: String
+        get() = "$brand $model ($displaySerialNo)".trim()
 
     companion object {
         @JvmField

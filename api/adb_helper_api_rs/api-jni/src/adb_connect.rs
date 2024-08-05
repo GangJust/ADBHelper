@@ -5,7 +5,7 @@ use jni::{
 
 use crate::helper::get_string;
 
-/// 获取adb版本
+/// adb ip连接
 #[no_mangle]
 pub unsafe extern "C" fn Java_adb_AdbServer_connect<'local>(
     mut env: JNIEnv<'local>,
