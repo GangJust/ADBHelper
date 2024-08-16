@@ -244,15 +244,7 @@ pub fn pull_file<T: AsRef<str>>(
     remote_path: &str,
     local_path: &str,
 ) -> Option<String> {
-    let args = vec![
-        "-s",
-        serial_no.as_ref(),
-        "pull",
-        // &safe_remote_path,
-        // &safe_local_path,
-        remote_path,
-        local_path,
-    ];
+    let args = vec!["-s", serial_no.as_ref(), "pull", remote_path, local_path];
 
     adb_syn(args)
 }

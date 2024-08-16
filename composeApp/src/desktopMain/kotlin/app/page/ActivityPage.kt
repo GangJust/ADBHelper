@@ -257,6 +257,13 @@ private fun ScreenshotDialogWindow() {
                     }) {
                         Text(StringRes.locale.save)
                     }
+
+                    DropdownMenuItem(onClick = {
+                        expanded = false
+                        onCloseRequest()
+                    }) {
+                        Text(StringRes.locale.close)
+                    }
                 }
             }
         }

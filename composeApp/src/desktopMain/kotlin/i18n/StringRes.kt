@@ -101,6 +101,8 @@ object StringRes {
 
         val save: String
 
+        val close: String
+
         val noFoundDownloadPath: String
 
         val allApp: String
@@ -341,6 +343,8 @@ object StringRes {
             get() = "刷新"
         override val save: String
             get() = "保存"
+        override val close: String
+            get() = "关闭"
         override val noFoundDownloadPath: String
             get() = "Download目录获取失败或不存在"
         override val allApp: String
@@ -582,6 +586,8 @@ object StringRes {
             get() = "Refresh"
         override val save: String
             get() = "Save"
+        override val close: String
+            get() = "Close"
         override val noFoundDownloadPath: String
             get() = "The Download directory fails to be fetched or does not exist"
         override val allApp: String
