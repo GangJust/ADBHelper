@@ -395,7 +395,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
             val result = AdbServer.instance.pullFile(
                 device = device,
                 remotePath = desc.installPath,
-                localPath = "${downloadPath}/${desc.packageName}.apk",
+                localPath = "${downloadPath}/${desc.packageName}_${desc.versionName}_${desc.versionCode}.apk",
             )
             val trim = result.trim()
             if (trim.isEmpty()) {
