@@ -4,7 +4,7 @@ import adb.AdbServer
 import adb.entity.AppDesc
 import adb.entity.Device
 import androidx.compose.foundation.lazy.LazyListState
-import com.google.gson.JsonObject
+import entity.Apps
 import i18n.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import mvi.BaseAction
 import mvi.BaseViewModel
 import mvi.MsgCallback
@@ -99,31 +101,19 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
     // 读取缓存的应用列表
     // Read cached application list
     private fun _readAppsCache(device: Device) {
-        val apps = CacheUtils.readJsonObj("${device.displaySerialNo}/$appCache")
-        _systemAppList.value = apps.getAsJsonArray("system_apps")
-            ?.map { CacheUtils.gson.fromJson(it, AppDesc::class.java) }
-            ?: emptyList()
-
-        _userAppList.value = apps.getAsJsonArray("user_apps")
-            ?.map { CacheUtils.gson.fromJson(it, AppDesc::class.java) }
-            ?: emptyList()
-
+        val content = CacheUtils.readString("${device.displaySerialNo}/$appCache")
+        val apps = runCatching { Json.decodeFromString<Apps>(content) }.getOrDefault(Apps.EMPTY)
+        _systemAppList.value = apps.systemApps
+        _userAppList.value = apps.userApps
         _allAppList.value = _systemAppList.value + _userAppList.value
     }
 
     // 保存应用列表至缓存
     // Save the application list to cache
     private fun _saveAppsCache(device: Device) {
-        runCatching {
-            val apps = JsonObject()
-            val systemApps = CacheUtils.gson.toJsonTree(systemAppList.value)
-            val userApps = CacheUtils.gson.toJsonTree(userAppList.value)
-            apps.add("system_apps", systemApps)
-            apps.add("user_apps", userApps)
-            CacheUtils.writeJson("${device.displaySerialNo}/$appCache", apps)
-        }.onFailure {
-            it.printStackTrace()
-        }
+        val apps = Apps(_systemAppList.value, _userAppList.value)
+        val content = runCatching { Json.encodeToString(apps) }.getOrDefault("{}")
+        CacheUtils.writeString("${device.displaySerialNo}/$appCache", content)
     }
 
     // 当前列表滚动状态
@@ -413,11 +403,36 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
             is AppListAction.GetAppList -> getAppList(action.device)
             is AppListAction.RefreshAppList -> refreshAppList(action.device, action.reload)
             is AppListAction.RefreshAppItem -> refreshAppItem(action.device, action.desc)
-            is AppListAction.InstallApk -> installApk(action.device, action.apkPath, action.msgCallback)
-            is AppListAction.UninstallApp -> uninstallApp(action.device, action.desc, action.msgCallback)
-            is AppListAction.ClearDataApp -> clearDataApp(action.device, action.desc, action.msgCallback)
-            is AppListAction.KillProcessApp -> killProcessApp(action.device, action.desc, action.msgCallback)
-            is AppListAction.LaunchActivity -> launchActivity(action.device, action.desc, action.msgCallback)
+            is AppListAction.InstallApk -> installApk(
+                action.device,
+                action.apkPath,
+                action.msgCallback
+            )
+
+            is AppListAction.UninstallApp -> uninstallApp(
+                action.device,
+                action.desc,
+                action.msgCallback
+            )
+
+            is AppListAction.ClearDataApp -> clearDataApp(
+                action.device,
+                action.desc,
+                action.msgCallback
+            )
+
+            is AppListAction.KillProcessApp -> killProcessApp(
+                action.device,
+                action.desc,
+                action.msgCallback
+            )
+
+            is AppListAction.LaunchActivity -> launchActivity(
+                action.device,
+                action.desc,
+                action.msgCallback
+            )
+
             is AppListAction.ExportApp -> exportApp(action.device, action.desc, action.msgResult)
         }
     }

@@ -1,8 +1,9 @@
 package entity
 
 import adb.entity.FileDesc
-import java.io.Serializable
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Bookmark(
     val name: String,
     val path: String,
@@ -23,4 +24,14 @@ data class Bookmark(
 
     val isDirectory: Boolean
         get() = kind == FileDesc.Kind.Directory.value
+
+    companion object {
+        @JvmField
+        val EMPTY = Bookmark(
+            name = "",
+            path = "",
+            kind = "",
+            created = 0L,
+        )
+    }
 }

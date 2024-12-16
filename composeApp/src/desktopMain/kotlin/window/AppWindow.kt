@@ -3,10 +3,12 @@ package window
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowDecoration
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 
@@ -14,6 +16,7 @@ val LocalWindowScope = compositionLocalOf<FrameWindowScope> {
     error("No WindowScope provided")
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppWindow(
     onCloseRequest: () -> Unit,
@@ -37,7 +40,7 @@ fun AppWindow(
         visible = visible,
         title = title,
         icon = icon,
-        undecorated = undecorated,
+        decoration = if (undecorated) WindowDecoration.Undecorated() else WindowDecoration.SystemDefault,
         transparent = transparent,
         resizable = resizable,
         enabled = enabled,

@@ -1,6 +1,11 @@
 package adb
 
-import adb.entity.*
+import adb.entity.Activity
+import adb.entity.AppDesc
+import adb.entity.Device
+import adb.entity.FileDesc
+import adb.entity.Screenshot
+import adb.entity.Version
 import compose.BuildConfig
 import utils.OsUtils
 import utils.PathUtils

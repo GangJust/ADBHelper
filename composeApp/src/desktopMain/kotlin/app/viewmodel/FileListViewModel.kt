@@ -1,7 +1,6 @@
 package app.viewmodel
 
 import adb.AdbServer
-import adb.entity.AppDesc
 import adb.entity.Device
 import adb.entity.FileDesc
 import entity.Bookmark
@@ -9,6 +8,8 @@ import i18n.StringRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import mvi.BaseAction
 import mvi.BaseViewModel
 import mvi.MsgCallback
@@ -123,13 +124,15 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
     private val bookmarksCache = "bookmarks.json"
 
     private fun _readBookmarksCache(device: Device) {
-        val arr = CacheUtils.readJsonArr("${device.displaySerialNo}/$bookmarksCache")
-        _bookmarks.value = arr.map { CacheUtils.gson.fromJson(it, Bookmark::class.java) }
+        val bookmarks = CacheUtils.readString("${device.displaySerialNo}/$bookmarksCache")
+        _bookmarks.value = runCatching {
+            Json.decodeFromString<List<Bookmark>>(bookmarks)
+        }.getOrDefault(emptyList())
     }
 
     private fun _saveBookmarksCache(device: Device) {
-        val bookmarks = CacheUtils.gson.toJsonTree(_bookmarks.value)
-        CacheUtils.writeJson("${device.displaySerialNo}/$bookmarksCache", bookmarks)
+        val bookmarks = Json.encodeToString(_bookmarks.value)
+        CacheUtils.writeString("${device.displaySerialNo}/$bookmarksCache", bookmarks)
     }
 
     // 书签对话框
@@ -218,7 +221,12 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
                 _saveBookmarksCache(device)
                 msgCallback.onMsg(StringRes.locale.bookmarkDeletedSuccess)
             }.onFailure {
-                msgCallback.onMsg(String.format(StringRes.locale.bookmarkDeletedFailure, it.message))
+                msgCallback.onMsg(
+                    String.format(
+                        StringRes.locale.bookmarkDeletedFailure,
+                        it.message
+                    )
+                )
             }
         }
     }
@@ -273,7 +281,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
             // 手动添加返回上级标识
             // Manually add the return to the parent directory identifier
-            _fileList.value += FileDesc.byPath(newPath).copy(name = "..", kind = FileDesc.Kind.Superior.value)
+            _fileList.value += FileDesc.byPath(newPath)
+                .copy(name = "..", kind = FileDesc.Kind.Superior.value)
 
             // 最终列表| Final list
             for (file in files) {
@@ -411,9 +420,24 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
             is FileListAction.BookmarkDialog -> onBookmarkDialog(action.isShowing)
             is FileListAction.BookmarkEditDialog -> onBookmarkEditDialog(action.bookmark)
             is FileListAction.GetBookmarks -> getBookmarks(action.device)
-            is FileListAction.OnAddBookmark -> onAddBookmark(action.device, action.bookmark, action.callback)
-            is FileListAction.OnSaveBookmark -> onSaveBookmark(action.device, action.bookmark, action.callback)
-            is FileListAction.OnDeleteBookmark -> onDeleteBookmark(action.device, action.bookmark, action.callback)
+            is FileListAction.OnAddBookmark -> onAddBookmark(
+                action.device,
+                action.bookmark,
+                action.callback
+            )
+
+            is FileListAction.OnSaveBookmark -> onSaveBookmark(
+                action.device,
+                action.bookmark,
+                action.callback
+            )
+
+            is FileListAction.OnDeleteBookmark -> onDeleteBookmark(
+                action.device,
+                action.bookmark,
+                action.callback
+            )
+
             is FileListAction.GoBookmark -> goBookmark(action.device, action.bookmark)
             is FileListAction.GetFileList -> getFileList(action.device, action.path)
             is FileListAction.DetailDialog -> onDetailDialog(action.desc)

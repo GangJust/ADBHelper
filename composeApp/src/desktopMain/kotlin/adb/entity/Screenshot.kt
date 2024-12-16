@@ -1,5 +1,8 @@
 package adb.entity
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Screenshot(
     // 媒体类型
     val mimetype: String,

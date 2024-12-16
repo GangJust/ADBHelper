@@ -20,18 +20,18 @@
 
 ## 运行配置
 
-IDEA运行时，请手动编辑 `Edit Configurations` 在 `Run` 命令后增加 `-Pdeubg=true` 参数，以便于`BuildConfig`类的产生。
+IDEA运行时，请手动编辑 `Edit Configurations` 在 `Run` 命令后增加 `-Pdebug=true` 参数，以便于`BuildConfig`类的产生。
 
 项目使用的自定义`GradleTask`：
 
 - `composeApp:run*` 相关任务
-  - 请手动增加 `-Pdeubg=true` 参数。
+  - 请手动增加 `-Pdebug=true` 参数。
 
 - `composeApp:build*` 相关任务
-  - 请手动增加 `-Pdeubg=true` 参数。
+  - 请手动增加 `-Pdebug=true` 参数。
 
 - `composeApp:clear*` 相关任务
-  - 请手动增加 `-Pdeubg=true` 参数。
+  - 请手动增加 `-Pdebug=true` 参数。
 
 - `composeApp:createDistributable`
   - 请在`composeApp/build/compose/binaries`目录下找到编译后的产物文件夹。

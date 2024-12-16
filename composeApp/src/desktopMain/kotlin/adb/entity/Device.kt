@@ -1,5 +1,8 @@
 package adb.entity
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Device(
     // 设备序列
     val serialNo: String,

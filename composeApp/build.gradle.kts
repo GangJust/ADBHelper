@@ -2,8 +2,9 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.jetbrainsCompose)
-    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -19,14 +20,16 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
-            implementation("com.google.code.gson:gson:2.11.0")
-            implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0-RC")
+
+            implementation(libs.androidx.lifecycle.viewmodel)
+            implementation(libs.androidx.lifecycle.viewmodel.compose)
+            implementation(libs.androidx.lifecycle.runtime.compose)
+            // implementation(libs.navigation.compose)
+            implementation(libs.kotlinx.serialization.json)
         }
         desktopMain.dependencies {
-            implementation(compose.desktop.currentOs) {
-                exclude("com.google.code.gson", "gson")
-            }
+            implementation(compose.desktop.currentOs)
+            implementation(libs.kotlinx.coroutines.swing)
         }
     }
 }
@@ -117,7 +120,7 @@ afterEvaluate {
         finalizedBy("generateBuildConfig")
     }
 
-    tasks.named("compileKotlinDesktop"){
+    tasks.named("compileKotlinDesktop") {
         finalizedBy("buildApiDebug", "buildApiRelease")
     }
 

@@ -1,5 +1,8 @@
 package adb.entity
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Activity(
     // 包名
     val packageName: String,

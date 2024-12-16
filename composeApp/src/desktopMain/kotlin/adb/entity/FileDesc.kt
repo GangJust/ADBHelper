@@ -1,5 +1,8 @@
 package adb.entity
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class FileDesc(
     // 索引号
     val inode: String,

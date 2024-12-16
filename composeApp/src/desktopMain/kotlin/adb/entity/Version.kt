@@ -1,5 +1,8 @@
 package adb.entity
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Version(
     // 版本名称
     val versionName: String,

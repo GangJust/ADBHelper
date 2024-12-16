@@ -1,15 +1,9 @@
 package utils
 
-import com.google.gson.Gson
-import com.google.gson.JsonArray
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
 import java.io.File
 import java.io.IOException
 
 object CacheUtils {
-    val gson: Gson by lazy { Gson() }
-
     val cacheDir = File(PathUtils.getConfigPath("cache"))
 
     fun readString(filename: String): String {
@@ -19,51 +13,12 @@ object CacheUtils {
             it.printStackTrace()
         }
 
-        return ""
+        return "{}"
     }
 
     fun writeString(filename: String, text: String): Boolean {
         runCatching {
             buildCacheFile(filename).writeText(text)
-            return true
-        }.onFailure {
-            it.printStackTrace()
-        }
-
-        return false
-    }
-
-    fun readJsonObj(filename: String): JsonObject {
-        runCatching {
-            val readText = buildCacheFile(filename).readText()
-            if (readText.isEmpty())
-                return JsonObject()
-
-            return gson.fromJson(readText, JsonObject::class.java)
-        }.onFailure {
-            it.printStackTrace()
-        }
-
-        return JsonObject()
-    }
-
-    fun readJsonArr(filename: String): JsonArray {
-        runCatching {
-            val readText = buildCacheFile(filename).readText()
-            if (readText.isEmpty())
-                return JsonArray()
-
-            return gson.fromJson(readText, JsonArray::class.java)
-        }.onFailure {
-            it.printStackTrace()
-        }
-
-        return JsonArray()
-    }
-
-    fun writeJson(filename: String, json: JsonElement): Boolean {
-        runCatching {
-            buildCacheFile(filename).writeText(gson.toJson(json))
             return true
         }.onFailure {
             it.printStackTrace()
