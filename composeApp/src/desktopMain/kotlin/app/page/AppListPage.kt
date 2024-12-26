@@ -12,7 +12,10 @@ import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragData
+import androidx.compose.ui.draganddrop.dragData
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerButton
@@ -22,9 +25,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.viewmodel.AppListAction
 import app.viewmodel.AppListViewModel
-import common.compose.*
+import common.compose.CardDialog
+import common.compose.CardMessageDialog
+import common.compose.SelectionText
+import common.compose.TabItem
+import common.compose.Toast
 import compose.ActionIconButton
-import compose.DropContainer
+import compose.DragAndDropContainer
 import compose.common.view.CardTextField
 import i18n.StringRes
 import kotlinx.coroutines.Dispatchers
@@ -33,8 +40,7 @@ import mvi.MsgResult
 import org.jetbrains.compose.resources.painterResource
 import utils.PathUtils
 import window.LocalWindowScope
-import java.awt.datatransfer.DataFlavor
-import java.awt.dnd.DnDConstants
+import java.net.URI
 
 @Composable
 fun AppListPage() {
@@ -214,6 +220,7 @@ private fun InstallFloatButton() {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun InstallDialog(
     onDismiss: () -> Unit
@@ -255,9 +262,12 @@ private fun InstallDialog(
             Box(
                 modifier = Modifier.padding(24.dp)
             ) {
-                DropContainer(window = windowScope.window,
+                /* DropContainer(
+                    window = windowScope.window,
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.height(280.dp).clip(RoundedCornerShape(12.dp))
+                    modifier = Modifier
+                        .height(280.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colors.secondaryVariant),
                     dropListener = {
                         onDragEnter {
@@ -300,6 +310,71 @@ private fun InstallDialog(
                             installMessage = StringRes.locale.dropApk
                         }
                     }) {
+                    SelectionText(
+                        value = installMessage,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    )
+                } */
+
+                DragAndDropContainer(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .height(280.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colors.secondaryVariant),
+                    dropListener = {
+                        onStarted {
+                            // enter the app window range
+                        }
+
+                        onEntered {
+                            // enter the drag range
+                            val dragData = this.dragData()
+                            if (dragData is DragData.FilesList) {
+                                val files = dragData.readFiles()
+                                val apkPath = files.first()
+
+                                if (apkPath.endsWith(".apk") || apkPath.endsWith(".apex")) {
+                                    installMessage = StringRes.locale.dropApkEnter
+                                } else {
+                                    installMessage = StringRes.locale.dropApkFair
+                                }
+                            }
+                        }
+
+                        onExited {
+                            // exit the drag range
+                            installMessage = StringRes.locale.dropApk
+                        }
+
+                        onEnded {
+                            // exit the app window range
+                            installMessage = StringRes.locale.dropApk
+                        }
+
+                        onDrop {
+                            val dragData = this.dragData()
+                            if (dragData is DragData.FilesList) {
+                                val files = dragData.readFiles()
+                                val apkPath = URI.create(files.first()).path.removePrefix("/")
+
+                                if (!apkPath.endsWith(".apk") && !apkPath.endsWith(".apex"))
+                                    return@onDrop false
+
+                                installMessage = String.format(StringRes.locale.installing, apkPath)
+                                val msgCallback = MsgCallback { msg: String ->
+                                    isClosed = true
+                                    installMessage = msg
+                                    viewModel.dispatch(AppListAction.RefreshAppList(device))
+                                }
+                                viewModel.dispatch(AppListAction.InstallApk(device, apkPath, msgCallback))
+                            }
+
+                            true
+                        }
+                    }
+                ) {
                     SelectionText(
                         value = installMessage,
                         textAlign = TextAlign.Center,

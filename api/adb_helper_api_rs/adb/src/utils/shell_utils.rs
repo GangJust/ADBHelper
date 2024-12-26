@@ -1,12 +1,12 @@
+use std::sync::Mutex;
 use std::{
-    cell::RefCell,
     path::PathBuf,
     process::{Command, Output, Stdio},
 };
 
 // This is a global variable that stores the path.
 // static mut M_PATH: OnceCell<String> = OnceCell::new();
-static mut M_PATH: RefCell<String> = RefCell::new(String::new());
+static M_PATH: Mutex<String> = Mutex::new(String::new());
 
 pub struct ShellUtils;
 
@@ -14,17 +14,16 @@ impl ShellUtils {
     /// Sets the path of an program.
     pub fn set_path(path: String) -> String {
         // unsafe { M_PATH.get_or_init(|| path).clone() }
-        unsafe {
-            let mut m_path = M_PATH.borrow_mut();
-            *m_path = path;
-            m_path.clone()
-        }
+        let mut path_guard = M_PATH.lock().unwrap();
+        let old_path = path_guard.clone();
+        *path_guard = path;
+        old_path
     }
 
     /// Returns the full path of an ADB program.
     fn program_path(program: &str) -> PathBuf {
         // let path = unsafe { M_PATH.get_or_init(|| String::new()) };
-        let path = unsafe { M_PATH.borrow().clone() };
+        let path = M_PATH.lock().unwrap().clone();
         let mut program_path = PathBuf::from(path);
         program_path.push(program);
         program_path
@@ -40,7 +39,7 @@ impl ShellUtils {
     /// # Example
     ///
     /// ```
-    /// use adb_core::utils::ShellUtils;
+    /// use adb::utils::ShellUtils;
     ///
     /// let output = ShellUtils::shell("ls", vec!["-l"]);
     /// match output {
@@ -87,7 +86,7 @@ impl ShellUtils {
     /// # Example
     ///
     /// ```
-    /// use adb_core::utils::ShellUtils;
+    /// use adb::utils::ShellUtils;
     ///
     /// let output = ShellUtils::shell_to_string("ls", vec!["-l"]);
     /// println!("Command output: {}", output);
@@ -113,7 +112,7 @@ impl ShellUtils {
     /// # Example
     ///
     /// ```
-    /// use adb_core::utils::ShellUtils;
+    /// use adb::utils::ShellUtils;
     ///
     /// let child = ShellUtils::shell_spawn("ls", vec!["-l"]);
     /// // Additional operations on the child process...

@@ -66,7 +66,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragData
+import androidx.compose.ui.draganddrop.dragData
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerButton
@@ -84,7 +87,7 @@ import common.compose.SelectionText
 import common.compose.Toast
 import common.compose.WaitingDialog
 import compose.ActionIconButton
-import compose.DropContainer
+import compose.DragAndDropContainer
 import compose.common.utils.fileSize
 import compose.common.utils.minus
 import compose.common.view.CardTextField
@@ -96,9 +99,7 @@ import kotlinx.coroutines.withContext
 import mvi.MsgCallback
 import org.jetbrains.compose.resources.painterResource
 import window.LocalWindowScope
-import java.awt.datatransfer.DataFlavor
-import java.awt.dnd.DnDConstants
-import java.io.File
+import java.net.URI
 
 @Composable
 fun FileListPage() {
@@ -225,17 +226,18 @@ private fun TopBar() {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun FileDropContainer(
     content: @Composable () -> Unit,
 ) {
-    val windowScope = LocalWindowScope.current
+    // val windowScope = LocalWindowScope.current
     val viewModel: FileListViewModel = viewModel()
     val device = LocalDevice.current!!
 
     var isDragging by remember { mutableStateOf(false) }
 
-    DropContainer(
+    /* DropContainer(
         window = windowScope.window,
         dropListener = {
             onDragEnter {
@@ -262,6 +264,66 @@ private fun FileDropContainer(
                 isDragging = false
             }
         },
+    ) {
+        content.invoke()
+
+        if (isDragging) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colors.onSurface.copy(alpha = 0.1f)),
+            ) {
+                Text(
+                    text = StringRes.locale.filePushMessage,
+                    style = MaterialTheme.typography.body2.copy(
+                        color = LocalContentColor.current,
+                    ),
+                )
+            }
+        }
+    } */
+
+    DragAndDropContainer(
+        dropListener = {
+            onStarted {
+                // enter the app window range
+            }
+
+            onEntered {
+                // enter the drag range
+                isDragging = true
+            }
+
+            onExited {
+                // exit the drag range
+                isDragging = false
+            }
+
+            onEnded {
+                // exit the app window range
+                isDragging = false
+            }
+
+            onDrop {
+                val dragData = this.dragData()
+                if (dragData is DragData.FilesList) {
+                    val files = dragData.readFiles()
+                    if (files.size > 1) {
+                        Toast.show(StringRes.locale.multiFileMessage)
+                    } else {
+                        val path = URI.create(files.first()).path.removePrefix("/")
+                        val msgCallback = MsgCallback { msg: String ->
+                            Toast.show(msg)
+                        }
+                        viewModel.dispatch(FileListAction.OnPush(device, path, msgCallback))
+                    }
+                }
+                true
+            }
+        }
     ) {
         content.invoke()
 
