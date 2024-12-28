@@ -350,7 +350,7 @@ private fun InstallDialog(
 
                         onEnded {
                             // exit the app window range
-                            installMessage = StringRes.locale.dropApk
+                            // installMessage = StringRes.locale.dropApk
                         }
 
                         onDrop {
@@ -362,6 +362,7 @@ private fun InstallDialog(
                                 if (!apkPath.endsWith(".apk") && !apkPath.endsWith(".apex"))
                                     return@onDrop false
 
+                                isClosed = false
                                 installMessage = String.format(StringRes.locale.installing, apkPath)
                                 val msgCallback = MsgCallback { msg: String ->
                                     isClosed = true
