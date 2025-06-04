@@ -8,7 +8,7 @@ use crate::helper::get_string;
 
 /// 设置adb工作目录
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_setWorkDir<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_setWorkDir<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     path: JString<'local>,
@@ -20,7 +20,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_setWorkDir<'local>(
 
 /// 启动adb服务
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_startServer<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_startServer<'local>(
     env: JNIEnv<'local>,
     _thiz: JObject<'local>,
 ) -> JString<'local> {
@@ -30,7 +30,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_startServer<'local>(
 
 /// 停止adb服务
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_killServer<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_killServer<'local>(
     env: JNIEnv<'local>,
     _thiz: JObject<'local>,
 ) -> JString<'local> {
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_killServer<'local>(
 
 /// adb服务是否已被杀死
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_isKilled<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_isKilled<'local>(
     _env: JNIEnv<'local>,
     _thiz: JObject<'local>,
 ) -> jboolean {

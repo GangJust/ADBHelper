@@ -1,0 +1,256 @@
+package io.github.adbhelper
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.window.WindowDraggableArea
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Icon
+import androidx.compose.material.LocalContentColor
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.ApplicationScope
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
+import com.mayakapps.compose.windowstyler.WindowCornerPreference
+import com.mayakapps.compose.windowstyler.WindowFrameStyle
+import com.mayakapps.compose.windowstyler.WindowStyle
+import compose.common.view.CardTextField
+import io.github.adbhelper.adb.AdbServer
+import io.github.adbhelper.common.compose.CardButton
+import io.github.adbhelper.common.compose.Toast
+import io.github.adbhelper.common.compose.ToasterContainer
+import io.github.adbhelper.common.res.IconRes
+import io.github.adbhelper.common.res.icons.Next
+import io.github.adbhelper.common.theme.AppTheme
+import io.github.adbhelper.compose.WindowTopBar
+import io.github.adbhelper.entity.AppConfig
+import io.github.adbhelper.i18n.StringRes
+import io.github.adbhelper.window.AppWindow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+
+fun main() = application {
+    val config = AppConfig.read()
+    val adbPath = config.adbPath
+    if (adbPath.isEmpty() || !File(adbPath).exists()) {
+        InitApp()
+    } else {
+        MainApp()
+    }
+}
+
+// Common Wrapper
+//   - App Theme
+//   - Toast
+@Composable
+fun AppContentWrapper(
+    content: @Composable () -> Unit,
+) {
+    AppTheme {
+        ToasterContainer {
+            content()
+        }
+    }
+}
+
+@Composable
+fun ApplicationScope.InitApp() {
+    AppWindow(
+        onCloseRequest = ::exitApplication,
+        title = StringRes.locale.title,
+        state = rememberWindowState(
+            width = 520.dp,
+            height = 280.dp,
+            position = WindowPosition(Alignment.Center),
+        ),
+        // transparent = true, //This error may occur on some Windows computers: `org.jetbrains.skiko.RenderException: Failed to create DirectX12 device.`
+        undecorated = true,
+        resizable = false,
+    ) {
+        // Use the following library to achieve `transparent=true` effect
+        WindowStyle(
+            frameStyle = WindowFrameStyle(
+                cornerPreference = WindowCornerPreference.ROUNDED,
+            )
+        )
+
+        AppContentWrapper {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                topBar = {
+                    this.WindowDraggableArea {
+                        WindowTopBar(
+                            onCloseRequest = ::exitApplication,
+                            title = {
+                                Text(
+                                    text = window.title,
+                                    style = MaterialTheme.typography.h6,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                                )
+                            }
+                        )
+                    }
+                }
+            ) {
+                val scope = rememberCoroutineScope()
+                var pathValue by remember { mutableStateOf("") }
+                var isWaiting by remember { mutableStateOf(false) }
+                var susscess by remember { mutableStateOf(false) }
+                val onNextClick = {
+                    if (pathValue.isNotBlank()) {
+                        scope.launch {
+                            runCatching {
+                                isWaiting = true
+                                val result = withContext(Dispatchers.IO) { AdbServer.test(pathValue) }
+                                isWaiting = false
+                                susscess = result.isBlank() || result.contains("successfully")
+                                if (!susscess) {
+                                    Toast.show(result.trim())
+                                }
+                            }.onFailure { e ->
+                                Toast.show(e.message ?: "unknown error.")
+                            }
+                        }
+                    }
+                }
+
+                if (susscess) {
+                    LaunchedEffect(Unit) {
+                        // 保存配置
+                        AppConfig.write(adbPath = pathValue)
+
+                        // 退出应用
+                        delay(3000)
+                        exitApplication()
+                    }
+
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = StringRes.locale.initSuccess,
+                            style = MaterialTheme.typography.body1,
+                        )
+                    }
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 32.dp),
+                    ) {
+                        Text(
+                            text = StringRes.locale.initDescription,
+                            style = MaterialTheme.typography.body1.copy(
+                                color = LocalContentColor.current.copy(alpha = 0.8f),
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.padding(vertical = 8.dp))
+
+                        CardTextField(
+                            value = pathValue,
+                            placeholder = StringRes.locale.initPlaceholder,
+                            singleLine = true,
+                            onValueChange = { pathValue = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+
+                        Spacer(modifier = Modifier.padding(vertical = 12.dp))
+
+                        CardButton(
+                            onClick = onNextClick,
+                            shape = CircleShape,
+                            enabled = !isWaiting,
+                            contentPadding = PaddingValues(horizontal = 40.dp, vertical = 12.dp),
+                        ) {
+                            if (isWaiting) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = IconRes.Next,
+                                    contentDescription = StringRes.locale.initNext,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ApplicationScope.MainApp() {
+    AppWindow(
+        onCloseRequest = ::exitApplication,
+        state = rememberWindowState(
+            width = 1080.dp,
+            height = 720.dp,
+            position = WindowPosition(Alignment.Center),
+        ),
+        title = StringRes.locale.title,
+        // transparent = true, //This error may occur on some Windows computers: `org.jetbrains.skiko.RenderException: Failed to create DirectX12 device.`
+        undecorated = true,
+        resizable = false,
+    ) {
+        // Use the following library to achieve `transparent=true` effect
+        WindowStyle(
+            frameStyle = WindowFrameStyle(
+                cornerPreference = WindowCornerPreference.ROUNDED,
+            )
+        )
+
+        val coroutineScope = rememberCoroutineScope()
+        LaunchedEffect(Unit) {
+            coroutineScope.launch(Dispatchers.IO) {
+                val config = AppConfig.read()
+                AdbServer.initialize(config.adbPath)
+                AdbServer.instance.startServer()
+            }
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                AdbServer.instance.killServer()
+            }
+        }
+
+        AdbHelperApp(::exitApplication)
+    }
+}

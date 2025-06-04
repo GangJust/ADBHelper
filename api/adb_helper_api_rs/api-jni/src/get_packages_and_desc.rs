@@ -8,7 +8,7 @@ use crate::helper::{get_result, get_string, JArrayList};
 
 /// 获取包名列表
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_getPackages<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_getPackages<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_getPackages<'local>(
 
 /// 通过包名获取App信息
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_getAppDesc<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_getAppDesc<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -81,7 +81,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_getAppDesc<'local>(
         ];
 
         let result = env.new_object(
-            "adb/entity/AppDesc",
+            "io/github/adbhelper/adb/entity/AppDesc",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V",
             &args,
         );
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_getAppDesc<'local>(
         return get_result(result);
     }
 
-    let empty = env.get_static_field("adb/entity/AppDesc", "EMPTY", "Ladb/entity/AppDesc;");
+    let empty = env.get_static_field("io/github/adbhelper/adb/entity/AppDesc", "EMPTY", "Ladb/entity/AppDesc;");
     return match empty {
         Ok(it) => it.l().unwrap_or(JObject::null()),
         Err(_) => JObject::null(),

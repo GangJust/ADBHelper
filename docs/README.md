@@ -20,26 +20,14 @@
 
 ## 运行配置
 
-IDEA运行时，请手动编辑 `Edit Configurations` 在 `Run` 命令后增加 `-Pdebug=true` 参数，以便于`BuildConfig`类的产生。
-
 项目使用的自定义`GradleTask`：
-
-- `composeApp:run*` 相关任务
-  - 请手动增加 `-Pdebug=true` 参数。
-
-- `composeApp:build*` 相关任务
-  - 请手动增加 `-Pdebug=true` 参数。
-
-- `composeApp:clear*` 相关任务
-  - 请手动增加 `-Pdebug=true` 参数。
 
 - `composeApp:createDistributable`
   - 请在`composeApp/build/compose/binaries`目录下找到编译后的产物文件夹。
 
-- `composeApp:*Release` 相关任务 (暂未找到解决方案)
-  - 该任务编译编译后运行存在问题，典型问题为：
-  - `Dispatchers.Main` 在Release后无法被找到。
-  - `Gson`的`JsonObject` 在Release后被编译优化，尝试设置`optimize.set(false)`仍然存在。
+- ~~`composeApp:*Release` 相关任务 (暂未找到解决方案)~~
+  - ~~该任务编译编译后运行存在问题，典型问题为：~~
+  - ~~`Dispatchers.Main` 在Release后无法被找到。~~
 
 你需要手动解决这些问题。
 

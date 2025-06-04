@@ -7,7 +7,7 @@ use crate::helper::get_string;
 
 /// adb ip连接
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_connect<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_connect<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     ip: JString<'local>,

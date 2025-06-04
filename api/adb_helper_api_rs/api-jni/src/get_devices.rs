@@ -8,7 +8,7 @@ use crate::helper::{get_result, JArrayList, JHashMap};
 
 /// 获取附加设备列表
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_getDevices<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_getDevices<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
 ) -> JObject<'local> {
@@ -55,7 +55,7 @@ fn new_device<'local>(env: &mut JNIEnv<'local>, device: &Device) -> JObject<'loc
     ];
 
     let result = env.new_object(
-        "adb/entity/Device",
+        "io/github/adbhelper/adb/entity/Device",
         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)V",
         &args,
     );

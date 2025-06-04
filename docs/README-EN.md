@@ -20,27 +20,14 @@ Designed using MVI with a clear structure and simple functionality.
 
 ## Running Configuration
 
-When running in IDEA, manually edit `Edit Configurations` and add the `-Pdebug=true` parameter after the `Run` command
-to generate the `BuildConfig` class.
-
 Custom `GradleTask` used by the project:
-
-- `composeApp:run*` related tasks
-  - Please manually add the `-Pdebug=true` parameter.
-
-- `composeApp:build*` related tasks
-  - Please manually add the `-Pdebug=true` parameter.
-
-- `composeApp:clear*` related tasks
-  - Please manually add the `-Pdebug=true` parameter.
 
 - `composeApp:createDistributable`
   - Please find the compiled product folder in the `composeApp/build/compose/binaries` directory.
 
-- `composeApp:*Release` related tasks (no solution found yet)
-  - The task has problems after compilation and running, typical problems include:
-  - `Dispatchers.Main` cannot be found after Release.
-  - `Gson`'s `JsonObject` is compiled and optimized after Release, trying to set `optimize.set(false)` still exists.
+- ~~`composeApp:*Release` related tasks (no solution found yet)~~
+  - ~~The task has problems after compilation and running, typical problems include:~~
+  - ~~`Dispatchers.Main` cannot be found after Release.~~
 
 you need to manually solve these problems.
 

@@ -7,7 +7,7 @@ use crate::helper::{get_result, get_string, JArrayList};
 
 /// 获取活动信息
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_getActivity<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_getActivity<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_getActivity<'local>(
         ];
 
         let result = env.new_object(
-            "adb/entity/Activity",
+            "io/github/adbhelper/adb/entity/Activity",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)V",
             &args,
         );
@@ -47,7 +47,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_getActivity<'local>(
         return get_result(result);
     }
 
-    let empty = env.get_static_field("adb/entity/Activity", "EMPTY", "Ladb/entity/Activity;");
+    let empty = env.get_static_field("io/github/adbhelper/adb/entity/Activity", "EMPTY", "Ladb/entity/Activity;");
     return match empty {
         Ok(it) => it.l().unwrap_or(JObject::null()),
         Err(_) => JObject::null(),

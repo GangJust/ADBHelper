@@ -8,7 +8,7 @@ use crate::helper::{get_result, get_string, JArrayList};
 
 /// 获取文件列表
 #[no_mangle]
-pub extern "C" fn Java_adb_AdbServer_getFiles<'local>(
+pub extern "C" fn Java_io_github_adbhelper_adb_AdbServer_getFiles<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -57,7 +57,7 @@ fn new_file_desc<'local>(env: &mut JNIEnv<'local>, desc: &FileDesc) -> JObject<'
     ];
 
     let result = env.new_object(
-        "adb/entity/FileDesc", 
+        "io/github/adbhelper/adb/entity/FileDesc",
     "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", 
     &args
     );
@@ -67,7 +67,7 @@ fn new_file_desc<'local>(env: &mut JNIEnv<'local>, desc: &FileDesc) -> JObject<'
 
 /// 获取文件类型
 #[no_mangle]
-pub extern "C" fn Java_adb_AdbServer_getFileKind<'local>(
+pub extern "C" fn Java_io_github_adbhelper_adb_AdbServer_getFileKind<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,

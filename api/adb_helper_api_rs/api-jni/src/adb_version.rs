@@ -7,7 +7,7 @@ use crate::helper::get_result;
 
 /// 获取adb版本
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_version<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_version<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
 ) -> JObject<'local> {
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_version<'local>(
         ];
 
         let result = env.new_object(
-            "adb/entity/Version",
+            "io/github/adbhelper/adb/entity/Version",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
             &args,
         );
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_version<'local>(
         return get_result(result);
     }
 
-    let empty = env.get_static_field("adb/entity/Version", "EMPTY", "Ladb/entity/Version;");
+    let empty = env.get_static_field("io/github/adbhelper/adb/entity/Version", "EMPTY", "Ladb/entity/Version;");
 
     return match empty {
         Ok(it) => it.l().unwrap_or(JObject::null()),

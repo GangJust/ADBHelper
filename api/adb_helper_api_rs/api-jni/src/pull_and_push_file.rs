@@ -7,7 +7,7 @@ use crate::helper::get_string;
 
 /// 拉取文件
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_pullFile<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_pullFile<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -28,7 +28,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_pullFile<'local>(
 
 /// 推送文件
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_pushFile<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_pushFile<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,

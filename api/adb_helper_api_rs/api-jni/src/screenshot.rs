@@ -7,7 +7,7 @@ use crate::helper::{get_result, get_string};
 
 /// 屏幕截图
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_screenshot<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_screenshot<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -29,12 +29,12 @@ pub unsafe extern "C" fn Java_adb_AdbServer_screenshot<'local>(
             JValue::from(&data),
         ];
 
-        let result = env.new_object("adb/entity/Screenshot", "(Ljava/lang/String;JJ[B)V", &args);
+        let result = env.new_object("io/github/adbhelper/adb/entity/Screenshot", "(Ljava/lang/String;JJ[B)V", &args);
 
         return get_result(result);
     }
 
-    let empty = env.get_static_field("adb/entity/Screenshot", "EMPTY", "Ladb/entity/Screenshot;");
+    let empty = env.get_static_field("io/github/adbhelper/adb/entity/Screenshot", "EMPTY", "Ladb/entity/Screenshot;");
     return match empty {
         Ok(it) => it.l().unwrap_or(JObject::null()),
         Err(_) => JObject::null(),

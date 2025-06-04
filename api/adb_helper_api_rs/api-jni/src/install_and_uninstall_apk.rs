@@ -7,7 +7,7 @@ use crate::helper::get_string;
 
 /// 安装apk
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_installApk<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_installApk<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn Java_adb_AdbServer_installApk<'local>(
 
 /// 卸载apk
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_uninstallApk<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_uninstallApk<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,

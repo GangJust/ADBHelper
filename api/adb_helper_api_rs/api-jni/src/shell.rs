@@ -8,7 +8,7 @@ use crate::helper::get_string;
 
 /// 同步执行shell命令
 #[no_mangle]
-pub unsafe extern "C" fn Java_adb_AdbServer_shellSyn<'local>(
+pub unsafe extern "C" fn Java_io_github_adbhelper_adb_AdbServer_shellSyn<'local>(
     mut env: JNIEnv<'local>,
     _thiz: JObject<'local>,
     serial_no: JString<'local>,
