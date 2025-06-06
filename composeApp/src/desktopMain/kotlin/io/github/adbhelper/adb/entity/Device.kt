@@ -57,7 +57,7 @@ data class Device(
 
     companion object {
         @JvmField
-        val EMPTY = io.github.adbhelper.adb.entity.Device(
+        val Empty = Device(
             serialNo = "",
             state = "",
             product = "",

@@ -27,6 +27,7 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
-import androidx.lifecycle.viewmodel.compose.viewModel
 import compose.common.view.CardTextField
 import io.github.adbhelper.LocalDevice
 import io.github.adbhelper.app.viewmodel.ActivityAction
@@ -53,6 +53,7 @@ import io.github.adbhelper.common.compose.ToasterContainer
 import io.github.adbhelper.common.compose.rememberToast
 import io.github.adbhelper.common.res.IconRes
 import io.github.adbhelper.common.res.icons.Scrcpy
+import io.github.adbhelper.composeViewModel
 import io.github.adbhelper.i18n.StringRes
 import io.github.adbhelper.mvi.MsgCallback
 import io.github.adbhelper.mvi.MsgResult
@@ -61,14 +62,21 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.skia.Image
 
 @Composable
-fun ActivityPage() {
-    val viewModel: ActivityViewModel = viewModel()
+fun ActivityPage(
+    model: ActivityViewModel = composeViewModel(),
+) {
+    val device = LocalDevice.current
+    LaunchedEffect(device) {
+        model.dispatch(ActivityAction.Refresh(device))
+    }
 
-    Scaffold(floatingActionButton = {
-        FloatButtons()
-    }) {
-        val activity by viewModel.activity.collectAsState()
-        val handoff by viewModel.toggleFullClassName.collectAsState()
+    Scaffold(
+        floatingActionButton = {
+            FloatButtons(model = model)
+        },
+    ) {
+        val activity by model.activity.collectAsState()
+        val handoff by model.toggleFullClassName.collectAsState()
 
         Column(
             modifier = Modifier.padding(vertical = 12.dp),
@@ -82,9 +90,9 @@ fun ActivityPage() {
         }
     }
 
-    ScreenshotDialogWindow()
+    ScreenshotDialogWindow(model = model)
 
-    ScrcpyConfigDialog()
+    ScrcpyConfigDialog(model = model)
 }
 
 @Composable
@@ -149,9 +157,10 @@ private fun MultiItem(
 }
 
 @Composable
-private fun FloatButtons() {
-    val viewModel: ActivityViewModel = viewModel()
-    val device = LocalDevice.current!!
+private fun FloatButtons(
+    model: ActivityViewModel,
+) {
+    val device = LocalDevice.current
 
     Column {
         FloatingActionButton(
@@ -159,7 +168,7 @@ private fun FloatButtons() {
                 val callback = MsgCallback {
                     Toast.show(it)
                 }
-                viewModel.dispatch(ActivityAction.OnStartScrcpy(device, callback))
+                model.dispatch(ActivityAction.StartScrcpy(device, callback))
             },
         ) {
             Icon(
@@ -171,7 +180,7 @@ private fun FloatButtons() {
         FloatingActionButton(
             onClick = {
                 Toast.show(StringRes.locale.screenshotWaiting)
-                viewModel.dispatch(ActivityAction.OnScreenshot(device))
+                model.dispatch(ActivityAction.Screenshot(device))
             },
         ) {
             Icon(
@@ -182,7 +191,7 @@ private fun FloatButtons() {
         Spacer(Modifier.padding(vertical = 4.dp))
         FloatingActionButton(
             onClick = {
-                viewModel.dispatch(ActivityAction.OnToggleFullClassName)
+                model.dispatch(ActivityAction.ToggleFullClassName)
             },
         ) {
             Icon(
@@ -193,7 +202,7 @@ private fun FloatButtons() {
         Spacer(Modifier.padding(vertical = 4.dp))
         FloatingActionButton(
             onClick = {
-                viewModel.dispatch(ActivityAction.OnRefresh(device))
+                model.dispatch(ActivityAction.Refresh(device))
             },
         ) {
             Icon(
@@ -206,10 +215,11 @@ private fun FloatButtons() {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ScreenshotDialogWindow() {
-    val viewModel: ActivityViewModel = viewModel()
-    val device = LocalDevice.current!!
-    val screenshot by viewModel.screenshot.collectAsState()
+private fun ScreenshotDialogWindow(
+    model: ActivityViewModel,
+) {
+    val device = LocalDevice.current
+    val screenshot by model.screenshot.collectAsState()
 
     screenshot ?: return // 无截屏数据，不显示|No screenshot data
 
@@ -225,7 +235,7 @@ private fun ScreenshotDialogWindow() {
     val encoded = Image.makeFromEncoded(screenshot!!.data)
     val onCloseRequest = {
         runCatching { encoded.close() } //
-        viewModel.dispatch(ActivityAction.OnClearScreenshot)
+        model.dispatch(ActivityAction.ClearScreenshot)
     }
     DialogWindow(
         title = device.brandModelSerialNo,
@@ -263,7 +273,7 @@ private fun ScreenshotDialogWindow() {
                     DropdownMenuItem(onClick = {
                         expanded = false
                         subToast.show(StringRes.locale.screenshotRefresh)
-                        viewModel.dispatch(ActivityAction.OnScreenshot(device))
+                        model.dispatch(ActivityAction.Screenshot(device))
                     }) {
                         Text(StringRes.locale.refresh)
                     }
@@ -276,7 +286,7 @@ private fun ScreenshotDialogWindow() {
                                 PathUtils.openDir(path)
                             }
                         }
-                        viewModel.dispatch(ActivityAction.OnSaveScreenshot(device, msgResult))
+                        model.dispatch(ActivityAction.SaveScreenshot(device, msgResult))
                     }) {
                         Text(StringRes.locale.save)
                     }
@@ -294,16 +304,17 @@ private fun ScreenshotDialogWindow() {
 }
 
 @Composable
-private fun ScrcpyConfigDialog() {
-    val viewModel: ActivityViewModel = viewModel()
-    val device = LocalDevice.current!!
-    val show by viewModel.scrcpyDialog.collectAsState()
+private fun ScrcpyConfigDialog(
+    model: ActivityViewModel,
+) {
+    val device = LocalDevice.current
+    val show by model.scrcpyDialog.collectAsState()
 
     if (!show) return
 
     var scrcpyPath by remember { mutableStateOf("") }
     CardContentDialog(
-        onDismiss = { viewModel.dispatch(ActivityAction.OnScrcpyDialog(false)) },
+        onDismiss = { model.dispatch(ActivityAction.ScrcpyDialog(false)) },
         header = {
             Text(
                 StringRes.locale.scrcpyTitle,
@@ -316,7 +327,7 @@ private fun ScrcpyConfigDialog() {
         actions = {
             Spacer(modifier = Modifier.weight(1f))
             TextButton(
-                onClick = { viewModel.dispatch(ActivityAction.OnScrcpyDialog(false)) },
+                onClick = { model.dispatch(ActivityAction.ScrcpyDialog(false)) },
                 modifier = Modifier.padding(bottom = 8.dp, end = 16.dp)
             ) {
                 Text(StringRes.locale.cancel)
@@ -327,7 +338,7 @@ private fun ScrcpyConfigDialog() {
                         Toast.show(StringRes.locale.scrcpyPathEmpty)
                         return@TextButton
                     }
-                    viewModel.dispatch(ActivityAction.OnSaveScrcpyPath(device, scrcpyPath))
+                    model.dispatch(ActivityAction.SaveScrcpyPath(device, scrcpyPath))
                 },
                 modifier = Modifier.padding(bottom = 8.dp, end = 16.dp)
             ) {

@@ -2,7 +2,7 @@ package io.github.adbhelper.window
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.KeyEvent
@@ -12,7 +12,7 @@ import androidx.compose.ui.window.WindowDecoration
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 
-val LocalWindowScope = compositionLocalOf<FrameWindowScope> {
+val LocalWindowScope = staticCompositionLocalOf<FrameWindowScope> {
     error("No WindowScope provided")
 }
 

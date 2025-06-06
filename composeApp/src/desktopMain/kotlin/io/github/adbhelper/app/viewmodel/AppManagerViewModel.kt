@@ -1,79 +1,77 @@
 package io.github.adbhelper.app.viewmodel
 
+import androidx.compose.foundation.lazy.LazyListState
 import io.github.adbhelper.adb.AdbServer
 import io.github.adbhelper.adb.entity.AppDesc
 import io.github.adbhelper.adb.entity.Device
-import androidx.compose.foundation.lazy.LazyListState
 import io.github.adbhelper.entity.Apps
 import io.github.adbhelper.i18n.StringRes
+import io.github.adbhelper.mvi.BaseAction
+import io.github.adbhelper.mvi.BaseMVI
+import io.github.adbhelper.mvi.MsgCallback
+import io.github.adbhelper.mvi.MsgResult
+import io.github.adbhelper.utils.CacheUtils
+import io.github.adbhelper.utils.PathUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import io.github.adbhelper.mvi.BaseAction
-import io.github.adbhelper.mvi.BaseViewModel
-import io.github.adbhelper.mvi.MsgCallback
-import io.github.adbhelper.mvi.MsgResult
-import io.github.adbhelper.utils.CacheUtils
-import io.github.adbhelper.utils.PathUtils
 
-sealed class AppListAction : BaseAction() {
-    data class SelectedTab(val index: Int) : AppListAction()
-    data class UpdateSearchText(val text: String) : AppListAction()
-    data class GetAppList(val device: io.github.adbhelper.adb.entity.Device) : AppListAction()
+sealed class AppManagerAction : BaseAction() {
+    data class SelectedTab(val index: Int) : AppManagerAction()
+    data class UpdateSearchText(val text: String) : AppManagerAction()
 
-    data class RefreshAppList(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class RefreshList(
+        val device: Device,
         val reload: Boolean = false,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
-    data class RefreshAppItem(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class RefreshItem(
+        val device: Device,
         val desc: AppDesc,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
     data class InstallApk(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val apkPath: String,
         val msgCallback: MsgCallback,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
     data class UninstallApp(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val desc: AppDesc,
         val msgCallback: MsgCallback,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
     data class ClearDataApp(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val desc: AppDesc,
         val msgCallback: MsgCallback,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
     data class KillProcessApp(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val desc: AppDesc,
         val msgCallback: MsgCallback,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
     data class LaunchActivity(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val desc: AppDesc,
         val msgCallback: MsgCallback,
-    ) : AppListAction()
+    ) : AppManagerAction()
 
     data class ExportApp(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val desc: AppDesc,
         val msgResult: MsgResult<String?>,
-    ) : AppListAction()
+    ) : AppManagerAction()
 }
 
-class AppListViewModel : BaseViewModel<AppListAction>() {
+class AppManagerViewModel() : BaseMVI<AppManagerAction>() {
     private val _isWaiting = MutableStateFlow(false)
     private val _currentTabIndex = MutableStateFlow(0)
     private val _allAppList = MutableStateFlow(listOf<AppDesc>())
@@ -100,7 +98,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 读取缓存的应用列表
     // Read cached application list
-    private fun _readAppsCache(device: io.github.adbhelper.adb.entity.Device) {
+    private fun _readAppsCache(device: Device) {
         val content = CacheUtils.readString("${device.displaySerialNo}/$appCache")
         val apps = runCatching { Json.decodeFromString<Apps>(content) }.getOrDefault(Apps.EMPTY)
         _systemAppList.value = apps.systemApps
@@ -110,7 +108,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 保存应用列表至缓存
     // Save the application list to cache
-    private fun _saveAppsCache(device: io.github.adbhelper.adb.entity.Device) {
+    private fun _saveAppsCache(device: Device) {
         val apps = Apps(_systemAppList.value, _userAppList.value)
         val content = runCatching { Json.encodeToString(apps) }.getOrDefault("{}")
         CacheUtils.writeString("${device.displaySerialNo}/$appCache", content)
@@ -140,13 +138,13 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 选中指定的 Tab
     // Select the specified tab
-    private fun selectedTab(index: Int) {
+    private fun handleSelectedTab(index: Int) {
         _currentTabIndex.value = index
     }
 
     // 更新搜索框的内容
     // Update the content of the search box
-    private fun updateSearchText(text: String) {
+    private fun handleUpdateSearchText(text: String) {
         _searchText.value = text
 
         // 按关键字过滤符合条件的应用
@@ -158,7 +156,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
         // 当搜索框为空时，切换到全部列表
         // When the search box is empty, switch to the full list
         if (text.isEmpty() && currentTabIndex.value == 3) {
-            selectedTab(0)
+            handleSelectedTab(0)
         }
     }
 
@@ -170,26 +168,16 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
         _allAppList.value = emptyList()
     }
 
-    // 获取应用列表
-    // Get app list
-    private fun getAppList(device: io.github.adbhelper.adb.entity.Device) {
-        singleLaunchIO("getAppList") {
-            _readAppsCache(device)
-            refreshAppList(device, false)
-        }
-    }
-
     // 刷新应用列表
     // Refresh app list
-    private fun refreshAppList(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleRefreshAppList(
+        device: Device,
         reload: Boolean,
     ) {
         singleLaunchIO("refreshAppList") {
-            // clear cache
-            if (reload) {
-                clearAppsCache()
-            }
+            _readAppsCache(device)
+
+            if (reload) clearAppsCache() // clear cache
 
             val systemAsync = async(Dispatchers.IO) {
                 refreshAppListHelper(device, true, _systemAppList)
@@ -208,7 +196,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
     }
 
     private suspend fun refreshAppListHelper(
-        device: io.github.adbhelper.adb.entity.Device,
+        device: Device,
         isSystem: Boolean,
         appList: MutableStateFlow<List<AppDesc>>,
     ): Pair<Set<String>, Set<String>> {
@@ -221,7 +209,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
             reducePackages.forEach { pkg ->
                 appList.value = appList.value.filter { desc -> desc.packageName != pkg }
                 _allAppList.value = _allAppList.value.filter { desc -> desc.packageName != pkg }
-                updateSearchText(_searchText.value)
+                handleUpdateSearchText(_searchText.value)
             }
         }
 
@@ -239,7 +227,7 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
                 withContext(Dispatchers.Main) {
                     appList.value += desc
                     _allAppList.value += desc
-                    updateSearchText(_searchText.value)
+                    handleUpdateSearchText(_searchText.value)
                 }
             }
         }
@@ -249,8 +237,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 刷新单个应用
     // Refresh a single app
-    private fun refreshAppItem(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleRefreshAppItem(
+        device: Device,
         desc: AppDesc,
     ) {
         singleLaunchIO("refreshAppItem") {
@@ -274,19 +262,19 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
                 _allAppList.value = allList
 
                 //
-                updateSearchText(_searchText.value)
+                handleUpdateSearchText(_searchText.value)
             } else { // is uninstalled
                 optionList.value = optionList.value.filter { it.packageName != desc.packageName }
                 _allAppList.value = _allAppList.value.filter { it.packageName != desc.packageName }
-                updateSearchText(_searchText.value)
+                handleUpdateSearchText(_searchText.value)
             }
         }
     }
 
     // 安装 APK
     // install apk
-    private fun installApk(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleInstallApk(
+        device: Device,
         apkPath: String,
         msgCallback: MsgCallback,
     ) {
@@ -303,8 +291,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 卸载应用
     // uninstall app
-    private fun uninstallApp(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun hanldeUninstallApp(
+        device: Device,
         desc: AppDesc,
         msgCallback: MsgCallback,
     ) {
@@ -321,8 +309,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 清除应用数据
     // clear app data
-    private fun clearDataApp(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleClearDataApp(
+        device: Device,
         desc: AppDesc,
         msgCallback: MsgCallback,
     ) {
@@ -339,8 +327,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 杀死应用进程
     // kill app all process
-    private fun killProcessApp(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleKillProcessApp(
+        device: Device,
         desc: AppDesc,
         msgCallback: MsgCallback,
     ) {
@@ -357,8 +345,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 启动应用 Activity
     // launch activity
-    private fun launchActivity(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleLaunchActivity(
+        device: Device,
         desc: AppDesc,
         msgCallback: MsgCallback,
     ) {
@@ -375,8 +363,8 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
 
     // 导出应用
     // export apk
-    private fun exportApp(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleExportApp(
+        device: Device,
         desc: AppDesc,
         msgResult: MsgResult<String?>,
     ) {
@@ -396,44 +384,43 @@ class AppListViewModel : BaseViewModel<AppListAction>() {
         }
     }
 
-    override fun dispatch(action: AppListAction) {
+    override fun dispatch(action: AppManagerAction) {
         when (action) {
-            is AppListAction.SelectedTab -> selectedTab(action.index)
-            is AppListAction.UpdateSearchText -> updateSearchText(action.text)
-            is AppListAction.GetAppList -> getAppList(action.device)
-            is AppListAction.RefreshAppList -> refreshAppList(action.device, action.reload)
-            is AppListAction.RefreshAppItem -> refreshAppItem(action.device, action.desc)
-            is AppListAction.InstallApk -> installApk(
+            is AppManagerAction.SelectedTab -> handleSelectedTab(action.index)
+            is AppManagerAction.UpdateSearchText -> handleUpdateSearchText(action.text)
+            is AppManagerAction.RefreshList -> handleRefreshAppList(action.device, action.reload)
+            is AppManagerAction.RefreshItem -> handleRefreshAppItem(action.device, action.desc)
+            is AppManagerAction.InstallApk -> handleInstallApk(
                 action.device,
                 action.apkPath,
                 action.msgCallback
             )
 
-            is AppListAction.UninstallApp -> uninstallApp(
+            is AppManagerAction.UninstallApp -> hanldeUninstallApp(
                 action.device,
                 action.desc,
                 action.msgCallback
             )
 
-            is AppListAction.ClearDataApp -> clearDataApp(
+            is AppManagerAction.ClearDataApp -> handleClearDataApp(
                 action.device,
                 action.desc,
                 action.msgCallback
             )
 
-            is AppListAction.KillProcessApp -> killProcessApp(
+            is AppManagerAction.KillProcessApp -> handleKillProcessApp(
                 action.device,
                 action.desc,
                 action.msgCallback
             )
 
-            is AppListAction.LaunchActivity -> launchActivity(
+            is AppManagerAction.LaunchActivity -> handleLaunchActivity(
                 action.device,
                 action.desc,
                 action.msgCallback
             )
 
-            is AppListAction.ExportApp -> exportApp(action.device, action.desc, action.msgResult)
+            is AppManagerAction.ExportApp -> handleExportApp(action.device, action.desc, action.msgResult)
         }
     }
 }

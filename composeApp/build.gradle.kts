@@ -27,7 +27,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.lifecycle.runtime.compose)
             // implementation(libs.material.icons)
-            // implementation(libs.navigation.compose)
+            implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
         }
         desktopMain.dependencies {

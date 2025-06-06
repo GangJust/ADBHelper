@@ -1,66 +1,68 @@
 package io.github.adbhelper
 
 import io.github.adbhelper.adb.AdbServer
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import io.github.adbhelper.adb.entity.Device
 import io.github.adbhelper.mvi.BaseAction
-import io.github.adbhelper.mvi.BaseViewModel
+import io.github.adbhelper.mvi.BaseMVI
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 sealed class AppAction : BaseAction() {
     data class Waiting(val waiting: Boolean) : AppAction()
-    data object GetDevices : AppAction()
-    data class SetCurrentDevice(val device: io.github.adbhelper.adb.entity.Device) : AppAction()
-    data class OnChangeIpAndPort(val ipAndPort: String) : AppAction()
+    data object Devices : AppAction()
+    data class CurrentDevice(val device: Device) : AppAction()
+    data class ChangeIpAndPort(val ipAndPort: String) : AppAction()
     data class Connect(val ip: String, val callback: (String) -> Unit) : AppAction()
 }
 
-class AppViewModel : BaseViewModel<AppAction>() {
+class AppViewModel() : BaseMVI<AppAction>() {
     private val _isWaiting = MutableStateFlow(false)
-    private val _devices = MutableStateFlow(listOf<io.github.adbhelper.adb.entity.Device>())
-    private val _currentDevice = MutableStateFlow<io.github.adbhelper.adb.entity.Device?>(null)
+    private val _devices = MutableStateFlow(listOf<Device>())
+    private val _currDevice = MutableStateFlow(Device.Empty)
     private val _ipAndPort = MutableStateFlow("")
 
-    val isWaiting: StateFlow<Boolean> = _isWaiting
-    val devices: StateFlow<List<io.github.adbhelper.adb.entity.Device>> = _devices
-    val currentDevice: StateFlow<io.github.adbhelper.adb.entity.Device?> = _currentDevice
-    val ipAndPort: StateFlow<String> = _ipAndPort
+    val isWaiting = _isWaiting.asStateFlow()
+    val devices = _devices.asStateFlow()
+    val currDevice = _currDevice.asStateFlow()
+    val ipAndPort = _ipAndPort.asStateFlow()
 
-    private fun getDevices() {
-        singleLaunchIO("getDevices") {
-            waiting(true)
-            _devices.value = AdbServer.instance.getDevices()
-            waiting(false)
+    private fun handleGetDevices() {
+        singleLaunchIO("handleGetDevices") {
+            handleWaiting(true)
+            _devices.emit(AdbServer.instance.getDevices())
+            handleWaiting(false)
         }
     }
 
-    private fun setCurrentDevice(device: io.github.adbhelper.adb.entity.Device) {
-        _currentDevice.value = device
+    private fun handleSetCurrentDevice(device: Device) {
+        _currDevice.update { device }
     }
 
-    private fun setIpAndPort(ipAndPort: String) {
+    private fun handleSetIpAndPort(ipAndPort: String) {
         _ipAndPort.value = ipAndPort
     }
 
-    private fun connect(ip: String, callback: (String) -> Unit) {
-        singleLaunchIO("connect") {
-            waiting(true)
+    private fun handleConnect(ip: String, callback: (String) -> Unit) {
+        singleLaunchIO("handleConnect") {
+            handleWaiting(true)
             val msg = AdbServer.instance.connect(ip)
             callback.invoke(msg)
-            waiting(false)
+            handleWaiting(false)
         }
     }
 
-    private fun waiting(waiting: Boolean) {
+    private fun handleWaiting(waiting: Boolean) {
         _isWaiting.value = waiting
     }
 
     override fun dispatch(action: AppAction) {
         when (action) {
-            is AppAction.GetDevices -> getDevices()
-            is AppAction.SetCurrentDevice -> setCurrentDevice(action.device)
-            is AppAction.Connect -> connect(action.ip, action.callback)
-            is AppAction.Waiting -> waiting(action.waiting)
-            is AppAction.OnChangeIpAndPort -> setIpAndPort(action.ipAndPort)
+            is AppAction.Devices -> handleGetDevices()
+            is AppAction.CurrentDevice -> handleSetCurrentDevice(action.device)
+            is AppAction.Connect -> handleConnect(action.ip, action.callback)
+            is AppAction.Waiting -> handleWaiting(action.waiting)
+            is AppAction.ChangeIpAndPort -> handleSetIpAndPort(action.ipAndPort)
         }
     }
 }

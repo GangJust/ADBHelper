@@ -1,15 +1,15 @@
 package io.github.adbhelper.app.viewmodel
 
 import io.github.adbhelper.mvi.BaseAction
-import io.github.adbhelper.mvi.BaseViewModel
+import io.github.adbhelper.mvi.BaseMVI
 
 sealed class TerminalAction : BaseAction() {
     // TODO
 }
 
-class TerminalViewModel : BaseViewModel<TerminalAction>() {
+class TerminalViewModel() : BaseMVI<TerminalAction>() {
 
-    override fun dispatch(action: io.github.adbhelper.app.viewmodel.TerminalAction) {
+    override fun dispatch(action: TerminalAction) {
         // TODO
     }
 }

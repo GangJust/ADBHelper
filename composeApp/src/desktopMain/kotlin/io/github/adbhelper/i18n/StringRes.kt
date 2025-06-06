@@ -53,9 +53,9 @@ object StringRes {
 
         val layoutAnalyse: String
 
-        val scheduledTask: String
+        val scheduledTasks: String
 
-        val simpleTerminal: String
+        val terminal: String
 
         val currPackageName: String
 
@@ -295,9 +295,9 @@ object StringRes {
             get() = "文件列表"
         override val layoutAnalyse: String
             get() = "布局分析"
-        override val scheduledTask: String
+        override val scheduledTasks: String
             get() = "定时任务"
-        override val simpleTerminal: String
+        override val terminal: String
             get() = "终端"
         override val currPackageName: String
             get() = "当前包名:"
@@ -538,9 +538,9 @@ object StringRes {
             get() = "FileManage"
         override val layoutAnalyse: String
             get() = "Layout"
-        override val scheduledTask: String
+        override val scheduledTasks: String
             get() = "Schedule"
-        override val simpleTerminal: String
+        override val terminal: String
             get() = "Terminal"
         override val currPackageName: String
             get() = "CurrPackage:"

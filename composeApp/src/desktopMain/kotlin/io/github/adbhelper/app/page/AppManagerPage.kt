@@ -36,6 +36,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,12 +53,11 @@ import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import compose.common.view.CardTextField
 import io.github.adbhelper.LocalDevice
 import io.github.adbhelper.adb.entity.AppDesc
-import io.github.adbhelper.app.viewmodel.AppListAction
-import io.github.adbhelper.app.viewmodel.AppListViewModel
+import io.github.adbhelper.app.viewmodel.AppManagerAction
+import io.github.adbhelper.app.viewmodel.AppManagerViewModel
 import io.github.adbhelper.common.compose.CardDialog
 import io.github.adbhelper.common.compose.CardMessageDialog
 import io.github.adbhelper.common.compose.SelectionText
@@ -65,6 +65,7 @@ import io.github.adbhelper.common.compose.TabItem
 import io.github.adbhelper.common.compose.Toast
 import io.github.adbhelper.compose.ActionIconButton
 import io.github.adbhelper.compose.DragAndDropContainer
+import io.github.adbhelper.composeViewModel
 import io.github.adbhelper.i18n.StringRes
 import io.github.adbhelper.mvi.MsgCallback
 import io.github.adbhelper.mvi.MsgResult
@@ -75,25 +76,35 @@ import org.jetbrains.compose.resources.painterResource
 import java.net.URI
 
 @Composable
-fun AppListPage() {
-    Scaffold(topBar = {
-        TopBar()
-    }, floatingActionButton = {
-        InstallFloatButton()
-    }) {
-        AppList()
+fun AppManagerPage(
+    model: AppManagerViewModel = composeViewModel(),
+) {
+    val device = LocalDevice.current
+    LaunchedEffect(device) {
+        model.dispatch(AppManagerAction.RefreshList(device))
+    }
+
+    Scaffold(
+        topBar = {
+            TopBar(model)
+        },
+        floatingActionButton = {
+            InstallFloatButton(model)
+        },
+    ) {
+        AppList(model)
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TopBar() {
-    val viewModel: AppListViewModel = viewModel()
-    val device = LocalDevice.current!!
-
-    val isWaiting by viewModel.isWaiting.collectAsState()
-    val currentTabIndex by viewModel.currentTabIndex.collectAsState()
-    val searchText by viewModel.searchText.collectAsState(Dispatchers.Main)
+private fun TopBar(
+    model: AppManagerViewModel,
+) {
+    val device = LocalDevice.current
+    val isWaiting by model.isWaiting.collectAsState()
+    val currentTabIndex by model.currentTabIndex.collectAsState()
+    val searchText by model.searchText.collectAsState(Dispatchers.Main)
 
     var reloadDialog by remember { mutableStateOf(false) }
 
@@ -104,35 +115,35 @@ private fun TopBar() {
             .padding(vertical = 4.dp),
     ) {
         Box {
-            val allAppList by viewModel.allAppList.collectAsState()
+            val allAppList by model.allAppList.collectAsState()
             TabItem(
                 index = 0,
                 title = String.format(StringRes.locale.allApp, allAppList.size),
                 selected = currentTabIndex == 0,
                 onSelect = {
-                    viewModel.dispatch(AppListAction.SelectedTab(it))
+                    model.dispatch(AppManagerAction.SelectedTab(it))
                 },
             )
         }
         Box {
-            val systemAppList by viewModel.systemAppList.collectAsState()
+            val systemAppList by model.systemAppList.collectAsState()
             TabItem(
                 index = 1,
                 title = String.format(StringRes.locale.systemApp, systemAppList.size),
                 selected = currentTabIndex == 1,
                 onSelect = {
-                    viewModel.dispatch(AppListAction.SelectedTab(it))
+                    model.dispatch(AppManagerAction.SelectedTab(it))
                 },
             )
         }
         Box {
-            val userAppList by viewModel.userAppList.collectAsState()
+            val userAppList by model.userAppList.collectAsState()
             TabItem(
                 index = 2,
                 title = String.format(StringRes.locale.userApp, userAppList.size),
                 selected = currentTabIndex == 2,
                 onSelect = {
-                    viewModel.dispatch(AppListAction.SelectedTab(it))
+                    model.dispatch(AppManagerAction.SelectedTab(it))
                 },
             )
         }
@@ -140,13 +151,13 @@ private fun TopBar() {
         // 是否具有关键字|whether it has keywords
         if (searchText.isNotBlank()) {
             Box {
-                val searchAppList by viewModel.searchAppList.collectAsState()
+                val searchAppList by model.searchAppList.collectAsState()
                 TabItem(
                     index = 3,
                     title = String.format(StringRes.locale.searchApp, searchAppList.size),
                     selected = currentTabIndex == 3,
                     onSelect = {
-                        viewModel.dispatch(AppListAction.SelectedTab(it))
+                        model.dispatch(AppManagerAction.SelectedTab(it))
                     },
                 )
             }
@@ -167,7 +178,7 @@ private fun TopBar() {
                     .width(160.dp)
                     .padding(horizontal = 4.dp),
                 onValueChange = {
-                    viewModel.dispatch(AppListAction.UpdateSearchText(it))
+                    model.dispatch(AppManagerAction.UpdateSearchText(it))
                 },
             )
 
@@ -189,7 +200,7 @@ private fun TopBar() {
                         Toast.show(StringRes.locale.loadAppsWaiting)
                         return@ActionIconButton
                     }
-                    viewModel.dispatch(AppListAction.RefreshAppList(device))
+                    model.dispatch(AppManagerAction.RefreshList(device))
                 },
                 modifier = Modifier.onClick(
                     matcher = PointerMatcher.mouse(PointerButton.Secondary)
@@ -221,14 +232,16 @@ private fun TopBar() {
                     Toast.show(StringRes.locale.loadAppsWaiting)
                     return@CardMessageDialog
                 }
-                viewModel.dispatch(AppListAction.RefreshAppList(device, true))
+                model.dispatch(AppManagerAction.RefreshList(device, true))
             }
         )
     }
 }
 
 @Composable
-private fun InstallFloatButton() {
+private fun InstallFloatButton(
+    model: AppManagerViewModel,
+) {
     val windowScope = LocalWindowScope.current
     var showInstallApkDialog by remember { mutableStateOf(false) }
 
@@ -245,9 +258,10 @@ private fun InstallFloatButton() {
 
     if (showInstallApkDialog) {
         windowScope.WindowDraggableArea {
-            InstallDialog(onDismiss = {
-                showInstallApkDialog = false
-            })
+            InstallDialog(
+                onDismiss = { showInstallApkDialog = false },
+                model = model,
+            )
         }
     }
 }
@@ -255,11 +269,11 @@ private fun InstallFloatButton() {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun InstallDialog(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    model: AppManagerViewModel,
 ) {
     val windowScope = LocalWindowScope.current
-    val device = LocalDevice.current!!
-    val viewModel: AppListViewModel = viewModel()
+    val device = LocalDevice.current
     var isClosed by remember { mutableStateOf(true) }
     var installMessage by remember { mutableStateOf(StringRes.locale.dropApk) }
     // var isDrag by remember { mutableStateOf(false) }
@@ -367,10 +381,10 @@ private fun InstallDialog(
                                 val files = dragData.readFiles()
                                 val apkPath = files.first()
 
-                                if (apkPath.endsWith(".apk") || apkPath.endsWith(".apex")) {
-                                    installMessage = StringRes.locale.dropApkEnter
+                                installMessage = if (apkPath.endsWith(".apk") || apkPath.endsWith(".apex")) {
+                                    StringRes.locale.dropApkEnter
                                 } else {
-                                    installMessage = StringRes.locale.dropApkFair
+                                    StringRes.locale.dropApkFair
                                 }
                             }
                         }
@@ -399,9 +413,9 @@ private fun InstallDialog(
                                 val msgCallback = MsgCallback { msg: String ->
                                     isClosed = true
                                     installMessage = msg
-                                    viewModel.dispatch(AppListAction.RefreshAppList(device))
+                                    model.dispatch(AppManagerAction.RefreshList(device))
                                 }
-                                viewModel.dispatch(AppListAction.InstallApk(device, apkPath, msgCallback))
+                                model.dispatch(AppManagerAction.InstallApk(device, apkPath, msgCallback))
                             }
 
                             true
@@ -421,10 +435,10 @@ private fun InstallDialog(
 
 // 应用列表|App List
 @Composable
-private fun AppList() {
-    val viewModel: AppListViewModel = viewModel()
-    val device = LocalDevice.current!!
-
+private fun AppList(
+    model: AppManagerViewModel,
+) {
+    val device = LocalDevice.current
     var isShowOptionDialog by remember { mutableStateOf(false) }
     var optionMenu by remember { mutableStateOf("") }
     var optionDesc by remember { mutableStateOf<AppDesc?>(null) }
@@ -432,9 +446,9 @@ private fun AppList() {
     Box(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        val currentTabIndex by viewModel.currentTabIndex.collectAsState()
-        val currentListState = viewModel.currentListState(currentTabIndex)
-        val currentAppList by viewModel.currentAppList(currentTabIndex).collectAsState()
+        val currentTabIndex by model.currentTabIndex.collectAsState()
+        val currentListState = model.currentListState(currentTabIndex)
+        val currentAppList by model.currentAppList(currentTabIndex).collectAsState()
 
         LazyColumn(
             state = currentListState,
@@ -443,7 +457,7 @@ private fun AppList() {
                 AppListItem(
                     desc = it,
                     onRefresh = { app ->
-                        viewModel.dispatch(AppListAction.RefreshAppItem(device, app))
+                        model.dispatch(AppManagerAction.RefreshItem(device, app))
                     },
                     onMenuClick = { menu, app ->
                         isShowOptionDialog = true
@@ -462,9 +476,8 @@ private fun AppList() {
 
     if (isShowOptionDialog) {
         OperateDialogs(
-            onDismiss = {
-                isShowOptionDialog = false
-            },
+            onDismiss = { isShowOptionDialog = false },
+            model = model,
             menu = optionMenu,
             desc = optionDesc!!,
         )
@@ -647,12 +660,11 @@ private fun AppItemAttribute(
 @Composable
 private fun OperateDialogs(
     onDismiss: () -> Unit,
+    model: AppManagerViewModel,
     menu: String,
     desc: AppDesc,
 ) {
-    val device = LocalDevice.current!!
-    val viewModel: AppListViewModel = viewModel()
-
+    val device = LocalDevice.current
     var isLoading by remember { mutableStateOf(false) }
     when (menu) {
         StringRes.locale.uninstallApp -> {
@@ -670,9 +682,9 @@ private fun OperateDialogs(
                         isLoading = false
                         onDismiss.invoke()
                         Toast.show(msg)
-                        viewModel.dispatch(AppListAction.RefreshAppList(device))
+                        model.dispatch(AppManagerAction.RefreshList(device))
                     }
-                    viewModel.dispatch(AppListAction.UninstallApp(device, desc, msgCallback))
+                    model.dispatch(AppManagerAction.UninstallApp(device, desc, msgCallback))
                 },
             )
         }
@@ -693,7 +705,7 @@ private fun OperateDialogs(
                         onDismiss.invoke()
                         Toast.show(msg)
                     }
-                    viewModel.dispatch(AppListAction.ClearDataApp(device, desc, msgCallback))
+                    model.dispatch(AppManagerAction.ClearDataApp(device, desc, msgCallback))
                 },
             )
         }
@@ -714,7 +726,7 @@ private fun OperateDialogs(
                         onDismiss.invoke()
                         Toast.show(msg)
                     }
-                    viewModel.dispatch(AppListAction.KillProcessApp(device, desc, msgCallback))
+                    model.dispatch(AppManagerAction.KillProcessApp(device, desc, msgCallback))
                 },
             )
         }
@@ -724,7 +736,7 @@ private fun OperateDialogs(
             val msgCallback = MsgCallback { msg: String ->
                 Toast.show(msg)
             }
-            viewModel.dispatch(AppListAction.LaunchActivity(device, desc, msgCallback))
+            model.dispatch(AppManagerAction.LaunchActivity(device, desc, msgCallback))
         }
 
         StringRes.locale.exportApk -> {
@@ -746,7 +758,7 @@ private fun OperateDialogs(
                             PathUtils.openDir(path)
                         }
                     }
-                    viewModel.dispatch(AppListAction.ExportApp(device, desc, msgCallback))
+                    model.dispatch(AppManagerAction.ExportApp(device, desc, msgCallback))
                 },
             )
         }

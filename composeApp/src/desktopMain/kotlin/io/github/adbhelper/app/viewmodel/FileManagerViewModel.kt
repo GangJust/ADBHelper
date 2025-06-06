@@ -5,102 +5,101 @@ import io.github.adbhelper.adb.entity.Device
 import io.github.adbhelper.adb.entity.FileDesc
 import io.github.adbhelper.entity.Bookmark
 import io.github.adbhelper.i18n.StringRes
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import io.github.adbhelper.mvi.BaseAction
-import io.github.adbhelper.mvi.BaseViewModel
+import io.github.adbhelper.mvi.BaseMVI
 import io.github.adbhelper.mvi.MsgCallback
 import io.github.adbhelper.utils.CacheUtils
 import io.github.adbhelper.utils.PathUtils
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.serialization.json.Json
 import java.io.File
 
-sealed class FileListAction : BaseAction() {
+sealed class FileManagerAction : BaseAction() {
 
     data class BookmarkDialog(
         val isShowing: Boolean,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class BookmarkEditDialog(
         val bookmark: Bookmark?,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class GetBookmarks(
-        val device: io.github.adbhelper.adb.entity.Device,
-    ) : FileListAction()
+        val device: Device,
+    ) : FileManagerAction()
 
-    data class OnAddBookmark(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class AddBookmark(
+        val device: Device,
         val bookmark: Bookmark,
         val callback: MsgCallback,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnSaveBookmark(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class SaveBookmark(
+        val device: Device,
         val bookmark: Bookmark,
         val callback: MsgCallback,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnDeleteBookmark(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class DeleteBookmark(
+        val device: Device,
         val bookmark: Bookmark,
         val callback: MsgCallback,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class GoBookmark(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val bookmark: Bookmark,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class GetFileList(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val path: String = "/",
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnCurrPath(
+    data class CurrPath(
         val path: String,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class DetailDialog(
         val desc: FileDesc?,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class DeleteDialog(
         val desc: FileDesc?,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
     data class GoDirectory(
-        val device: io.github.adbhelper.adb.entity.Device,
+        val device: Device,
         val desc: FileDesc,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnPull(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class Pull(
+        val device: Device,
         val desc: FileDesc,
         val callback: MsgCallback,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnPush(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class Push(
+        val device: Device,
         val localPath: String,
         val callback: MsgCallback,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnDelete(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class Delete(
+        val device: Device,
         val desc: FileDesc,
         val callback: MsgCallback,
-    ) : FileListAction()
+    ) : FileManagerAction()
 
-    data class OnPermissions(
-        val device: io.github.adbhelper.adb.entity.Device,
+    data class Permissions(
+        val device: Device,
         val desc: FileDesc,
-    ) : FileListAction()
+    ) : FileManagerAction()
 }
 
-class FileListViewModel : BaseViewModel<FileListAction>() {
+class FileManagerViewModel() : BaseMVI<FileManagerAction>() {
     private val _isWaiting = MutableStateFlow(false)
     private val _showBookmark = MutableStateFlow(false)
     private val _showBookmarkEdit = MutableStateFlow<Bookmark?>(null)
@@ -123,33 +122,33 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     private val bookmarksCache = "bookmarks.json"
 
-    private fun _readBookmarksCache(device: io.github.adbhelper.adb.entity.Device) {
+    private fun _readBookmarksCache(device: Device) {
         val bookmarks = CacheUtils.readString("${device.displaySerialNo}/$bookmarksCache")
         _bookmarks.value = runCatching {
             Json.decodeFromString<List<Bookmark>>(bookmarks)
         }.getOrDefault(emptyList())
     }
 
-    private fun _saveBookmarksCache(device: io.github.adbhelper.adb.entity.Device) {
+    private fun _saveBookmarksCache(device: Device) {
         val bookmarks = Json.encodeToString(_bookmarks.value)
         CacheUtils.writeString("${device.displaySerialNo}/$bookmarksCache", bookmarks)
     }
 
     // 书签对话框
     // Bookmark dialog
-    private fun onBookmarkDialog(isShowing: Boolean) {
+    private fun handleBookmarkDialog(isShowing: Boolean) {
         _showBookmark.value = isShowing
     }
 
     // 书签编辑对话框
     // Bookmark edit dialog
-    private fun onBookmarkEditDialog(bookmark: Bookmark?) {
+    private fun handleBookmarkEditDialog(bookmark: Bookmark?) {
         _showBookmarkEdit.value = bookmark
     }
 
     // 获取书签列表
     // Get bookmark list
-    private fun getBookmarks(device: io.github.adbhelper.adb.entity.Device) {
+    private fun handleBookmarks(device: Device) {
         singleLaunchIO("getBookmarks") {
             _readBookmarksCache(device)
         }
@@ -157,8 +156,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 添加书签
     // Add bookmark
-    private fun onAddBookmark(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleAddBookmark(
+        device: Device,
         bookmark: Bookmark,
         msgCallback: MsgCallback,
     ) {
@@ -175,8 +174,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 保存书签
     // Save bookmark
-    private fun onSaveBookmark(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleSaveBookmark(
+        device: Device,
         bookmark: Bookmark,
         msgCallback: MsgCallback,
     ) {
@@ -204,8 +203,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 删除书签
     // Delete bookmark
-    private fun onDeleteBookmark(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleDeleteBookmark(
+        device: Device,
         bookmark: Bookmark,
         msgCallback: MsgCallback,
     ) {
@@ -233,22 +232,22 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 跳转书签
     // Go bookmark
-    private fun goBookmark(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleGoBookmark(
+        device: Device,
         bookmark: Bookmark,
     ) {
         if (bookmark.isFile) {
             val path = bookmark.path.substringBeforeLast("/")
-            getFileList(device, path)
+            handleGetFileList(device, path)
         } else {
-            getFileList(device, bookmark.path)
+            handleGetFileList(device, bookmark.path)
         }
     }
 
     // 获取文件列表
     // Get file list
-    private fun getFileList(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleGetFileList(
+        device: Device,
         path: String,
     ) {
         val newPath = path.removeSuffix("/") + "/"
@@ -307,39 +306,39 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 详情对话框
     // Detail dialog
-    private fun onDetailDialog(desc: FileDesc?) {
+    private fun handleDetailDialog(desc: FileDesc?) {
         _showDetail.value = desc
     }
 
     // 删除对话框
     // Delete dialog
-    private fun onDeleteDialog(desc: FileDesc?) {
+    private fun handleDeleteDialog(desc: FileDesc?) {
         _showDelete.value = desc
     }
 
     // 更新当前路径
     // Update current path
-    private fun onCurrPath(path: String) {
+    private fun handleCurrPath(path: String) {
         _currPath.value = path
     }
 
     // 跳转文件夹
     // Go directory
-    private fun goDirectory(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleGoDirectory(
+        device: Device,
         desc: FileDesc,
     ) {
         if (desc.kind == "superior") { // 返回上一页| Return to the previous page
-            getFileList(device, desc.path.removeSuffix("/").substringBeforeLast("/") + "/")
+            handleGetFileList(device, desc.path.removeSuffix("/").substringBeforeLast("/") + "/")
         } else if (desc.isDirectory || desc.isLinkDirectory) { // 文件夹| Directory
-            getFileList(device, desc.absolutePath + "/")
+            handleGetFileList(device, desc.absolutePath + "/")
         }
     }
 
     // 拉取文件
     // Pull file
-    private fun onPull(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handlePull(
+        device: Device,
         desc: FileDesc,
         msgCallback: MsgCallback,
     ) {
@@ -364,8 +363,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 推送文件
     // Push file
-    private fun onPush(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handlePush(
+        device: Device,
         path: String,
         msgCallback: MsgCallback,
     ) {
@@ -374,7 +373,7 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
             val result = AdbServer.instance.pushFile(device, path, currPath.value).trim()
 
             if (result.contains("pushed")) {
-                getFileList(device, currPath.value)
+                handleGetFileList(device, currPath.value)
             }
 
             if (result.isEmpty()) {
@@ -388,8 +387,8 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 删除文件|文件夹
     // Delete file|folder
-    private fun onDelete(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handleDelete(
+        device: Device,
         desc: FileDesc,
         msgCallback: MsgCallback,
     ) {
@@ -397,7 +396,7 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
             _isWaiting.value = true
             val result = AdbServer.instance.shellSyn(device, "rm -rf '${desc.absolutePath}'").trim()
             if (result.isEmpty()) {
-                getFileList(device, desc.path)
+                handleGetFileList(device, desc.path)
                 msgCallback.onMsg(StringRes.locale.operSuccess)
             } else {
                 msgCallback.onMsg(result)
@@ -408,46 +407,46 @@ class FileListViewModel : BaseViewModel<FileListAction>() {
 
     // 权限
     // Permissions
-    private fun onPermissions(
-        device: io.github.adbhelper.adb.entity.Device,
+    private fun handlePermissions(
+        device: Device,
         desc: FileDesc,
     ) {
         // todo future
     }
 
-    override fun dispatch(action: FileListAction) {
+    override fun dispatch(action: FileManagerAction) {
         when (action) {
-            is FileListAction.BookmarkDialog -> onBookmarkDialog(action.isShowing)
-            is FileListAction.BookmarkEditDialog -> onBookmarkEditDialog(action.bookmark)
-            is FileListAction.GetBookmarks -> getBookmarks(action.device)
-            is FileListAction.OnAddBookmark -> onAddBookmark(
+            is FileManagerAction.BookmarkDialog -> handleBookmarkDialog(action.isShowing)
+            is FileManagerAction.BookmarkEditDialog -> handleBookmarkEditDialog(action.bookmark)
+            is FileManagerAction.GetBookmarks -> handleBookmarks(action.device)
+            is FileManagerAction.AddBookmark -> handleAddBookmark(
                 action.device,
                 action.bookmark,
                 action.callback
             )
 
-            is FileListAction.OnSaveBookmark -> onSaveBookmark(
+            is FileManagerAction.SaveBookmark -> handleSaveBookmark(
                 action.device,
                 action.bookmark,
                 action.callback
             )
 
-            is FileListAction.OnDeleteBookmark -> onDeleteBookmark(
+            is FileManagerAction.DeleteBookmark -> handleDeleteBookmark(
                 action.device,
                 action.bookmark,
                 action.callback
             )
 
-            is FileListAction.GoBookmark -> goBookmark(action.device, action.bookmark)
-            is FileListAction.GetFileList -> getFileList(action.device, action.path)
-            is FileListAction.DetailDialog -> onDetailDialog(action.desc)
-            is FileListAction.DeleteDialog -> onDeleteDialog(action.desc)
-            is FileListAction.OnCurrPath -> onCurrPath(action.path)
-            is FileListAction.GoDirectory -> goDirectory(action.device, action.desc)
-            is FileListAction.OnPull -> onPull(action.device, action.desc, action.callback)
-            is FileListAction.OnPush -> onPush(action.device, action.localPath, action.callback)
-            is FileListAction.OnDelete -> onDelete(action.device, action.desc, action.callback)
-            is FileListAction.OnPermissions -> onPermissions(action.device, action.desc)
+            is FileManagerAction.GoBookmark -> handleGoBookmark(action.device, action.bookmark)
+            is FileManagerAction.GetFileList -> handleGetFileList(action.device, action.path)
+            is FileManagerAction.DetailDialog -> handleDetailDialog(action.desc)
+            is FileManagerAction.DeleteDialog -> handleDeleteDialog(action.desc)
+            is FileManagerAction.CurrPath -> handleCurrPath(action.path)
+            is FileManagerAction.GoDirectory -> handleGoDirectory(action.device, action.desc)
+            is FileManagerAction.Pull -> handlePull(action.device, action.desc, action.callback)
+            is FileManagerAction.Push -> handlePush(action.device, action.localPath, action.callback)
+            is FileManagerAction.Delete -> handleDelete(action.device, action.desc, action.callback)
+            is FileManagerAction.Permissions -> handlePermissions(action.device, action.desc)
         }
     }
 }

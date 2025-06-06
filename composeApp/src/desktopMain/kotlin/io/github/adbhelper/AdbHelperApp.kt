@@ -56,21 +56,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import compose.common.view.CardTextField
+import io.github.adbhelper.adb.entity.Device
 import io.github.adbhelper.app.CheckContainer
 import io.github.adbhelper.app.page.ActivityPage
-import io.github.adbhelper.app.page.AppListPage
-import io.github.adbhelper.app.page.FileListPage
-import io.github.adbhelper.app.page.LayoutPage
-import io.github.adbhelper.app.page.SchedulePage
+import io.github.adbhelper.app.page.AppManagerPage
+import io.github.adbhelper.app.page.FileManagerPage
+import io.github.adbhelper.app.page.LayoutAnalysisPage
+import io.github.adbhelper.app.page.ScheduleTasksPage
 import io.github.adbhelper.app.page.TerminalPage
-import io.github.adbhelper.app.viewmodel.ActivityAction
-import io.github.adbhelper.app.viewmodel.ActivityViewModel
-import io.github.adbhelper.app.viewmodel.AppListAction
-import io.github.adbhelper.app.viewmodel.AppListViewModel
-import io.github.adbhelper.app.viewmodel.FileListAction
-import io.github.adbhelper.app.viewmodel.FileListViewModel
 import io.github.adbhelper.common.compose.CardDialog
 import io.github.adbhelper.common.compose.ExtendedMenu
 import io.github.adbhelper.common.compose.ExtendedMenuItem
@@ -86,110 +84,140 @@ import io.github.adbhelper.window.LocalWindowScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Desktop
 import java.awt.datatransfer.StringSelection
 import java.net.URI
 
-class Navigator {
-    private val _current = mutableStateOf(Page.Activity)
+sealed class AppNavigator {
+    @Serializable
+    data object Activity : AppNavigator()
 
-    val current
-        get() = _current.value
+    @Serializable
+    data object AppManager : AppNavigator()
 
-    fun toActivityPage() {
-        _current.value = Page.Activity
-    }
+    @Serializable
+    data object FileManager : AppNavigator()
 
-    fun toAppPage() {
-        _current.value = Page.App
-    }
+    @Serializable
+    data object LayoutAnalysis : AppNavigator()
 
-    fun toFilePage() {
-        _current.value = Page.File
-    }
+    @Serializable
+    data object ScheduleTasks : AppNavigator()
 
-    fun toLayoutPage() {
-        _current.value = Page.Layout
-    }
+    @Serializable
+    data object Terminal : AppNavigator()
+}
 
-    fun toSchedulePage() {
-        _current.value = Page.Schedule
-    }
-
-    fun toTerminalPage() {
-        _current.value = Page.Terminal
-    }
-
-    enum class Page {
-        Activity,
-        App,
-        File,
-        Layout,
-        Schedule,
-        Terminal,
+fun <T : Any> NavHostController.appNavigate(route: T) {
+    return navigate(route) {
+        popUpTo(AppNavigator.Activity) {
+            inclusive = false
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
     }
 }
 
-val LocalNavigator = compositionLocalOf<Navigator> {
-    error("No Navigator provided")
-}
-
-val LocalDevice = compositionLocalOf<io.github.adbhelper.adb.entity.Device?> {
-    error("No Device provided")
+val LocalDevice = compositionLocalOf {
+    Device.Empty
 }
 
 // App入口|App Entrance
 @Composable
 fun AdbHelperApp(
     onCloseRequest: () -> Unit,
+    model: AppViewModel = composeViewModel(),
 ) {
     val coroutineScope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
 
     AppContentWrapper {
-        CompositionLocalProvider(LocalNavigator provides Navigator()) {
-            Scaffold(
-                Modifier.fillMaxSize(),
-            ) {
-                Row {
-                    // 左侧菜单|Left menu
-                    AppMenu()
+        Scaffold(
+            Modifier.fillMaxSize(),
+        ) {
+            val navController = rememberNavController()
+            Row {
+                // 左侧菜单|Left menu
+                AppMenu(
+                    model = model,
+                    navController = navController,
+                )
 
-                    // 右侧布局|Right Layout
-                    Column(
-                        modifier = Modifier.padding(start = 4.dp),
-                    ) {
-                        // 顶部可拖拽操作栏|Top draggable operation bar
-                        WindowTopBar(onCloseRequest) {
-                            ActionIconButton(
-                                onClick = {
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        val url = "https://github.com/GangJust/AdbHelper"
-                                        runCatching {
-                                            Desktop.getDesktop().browse(URI.create(url))
-                                        }.onFailure {
-                                            clipboard.setClipEntry(ClipEntry(StringSelection(url))) // see: https://youtrack.jetbrains.com/issue/CMP-7624
-                                            withContext(Dispatchers.Main) {
-                                                Toast.show(StringRes.locale.githubUrlCopied)
-                                            }
+                // 右侧布局|Right Layout
+                Column(
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .weight(1f),
+                ) {
+                    // 顶部可拖拽操作栏|Top draggable operation bar
+                    WindowTopBar(onCloseRequest) {
+                        ActionIconButton(
+                            onClick = {
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    val url = "https://github.com/GangJust/AdbHelper"
+                                    runCatching {
+                                        Desktop.getDesktop().browse(URI.create(url))
+                                    }.onFailure {
+                                        clipboard.setClipEntry(ClipEntry(StringSelection(url))) // see: https://youtrack.jetbrains.com/issue/CMP-7624
+                                        withContext(Dispatchers.Main) {
+                                            Toast.show(StringRes.locale.githubUrlCopied)
                                         }
                                     }
-                                },
-                            ) {
-                                Icon(
-                                    imageVector = IconRes.Github,
-                                    contentDescription = "github",
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = IconRes.Github,
+                                contentDescription = "github",
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
+                    }
 
-                        // 内容布局|Content layout
-                        val device by viewModel<AppViewModel>().currentDevice.collectAsState()
-                        CompositionLocalProvider(LocalDevice provides device) {
-                            CheckContainer {
-                                AppContent()
+                    // 内容布局|Content layout
+                    val device by model.currDevice.collectAsState()
+                    CompositionLocalProvider(LocalDevice provides device) {
+                        NavHost(
+                            navController = navController,
+                            startDestination = AppNavigator.Activity,
+                        ) {
+                            composable<AppNavigator.Activity> {
+                                CheckContainer(device) {
+                                    ActivityPage()
+                                }
+                            }
+
+                            composable<AppNavigator.AppManager> {
+                                CheckContainer(device) {
+                                    AppManagerPage()
+                                }
+                            }
+
+                            composable<AppNavigator.FileManager> {
+                                CheckContainer(device) {
+                                    FileManagerPage()
+                                }
+                            }
+
+                            composable<AppNavigator.LayoutAnalysis> {
+                                CheckContainer(device) {
+                                    LayoutAnalysisPage()
+                                }
+                            }
+
+                            composable<AppNavigator.ScheduleTasks> {
+                                CheckContainer(device) {
+                                    ScheduleTasksPage()
+                                }
+                            }
+
+                            composable<AppNavigator.Terminal> {
+                                CheckContainer(device) {
+                                    TerminalPage()
+                                }
                             }
                         }
                     }
@@ -201,29 +229,30 @@ fun AdbHelperApp(
 
 // 左侧菜单|Left menu
 @Composable
-private fun AppMenu() {
-    val viewModel: AppViewModel = viewModel()
-    val navigator = LocalNavigator.current
+private fun AppMenu(
+    model: AppViewModel,
+    navController: NavHostController,
+) {
 
     val menuState = rememberExtendedMenuState()
     val menus = listOf(
         Triple(Res.drawable.ic_activity, StringRes.locale.activityInfo) {
-            navigator.toActivityPage()
+            navController.appNavigate(AppNavigator.Activity)
         },
         Triple(Res.drawable.ic_app, StringRes.locale.appManage) {
-            navigator.toAppPage()
+            navController.appNavigate(AppNavigator.AppManager)
         },
         Triple(Res.drawable.ic_folder, StringRes.locale.fileManage) {
-            navigator.toFilePage()
+            navController.appNavigate(AppNavigator.FileManager)
         },
         Triple(Res.drawable.ic_layout, StringRes.locale.layoutAnalyse) {
-            navigator.toLayoutPage()
+            navController.appNavigate(AppNavigator.LayoutAnalysis)
         },
-        Triple(Res.drawable.ic_timer, StringRes.locale.scheduledTask) {
-            navigator.toSchedulePage()
+        Triple(Res.drawable.ic_timer, StringRes.locale.scheduledTasks) {
+            navController.appNavigate(AppNavigator.ScheduleTasks)
         },
-        Triple(Res.drawable.ic_terminal, StringRes.locale.simpleTerminal) {
-            navigator.toTerminalPage()
+        Triple(Res.drawable.ic_terminal, StringRes.locale.terminal) {
+            navController.appNavigate(AppNavigator.Terminal)
         },
     )
 
@@ -268,7 +297,7 @@ private fun AppMenu() {
             }
         },
         footer = {
-            val currentDevice by viewModel.currentDevice.collectAsState()
+            val device by model.currDevice.collectAsState()
             ExtendedMenuItemBox(
                 modifier = Modifier.padding(8.dp),
                 onClick = {
@@ -281,13 +310,13 @@ private fun AppMenu() {
                             .fillMaxWidth(),
                     ) {
                         Text(
-                            text = currentDevice?.brandModel ?: StringRes.locale.noDeviceSelected,
+                            text = device.brandModel.ifEmpty { StringRes.locale.noDeviceSelected },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.body2,
                         )
                         Text(
-                            text = currentDevice?.displaySerialNo ?: StringRes.locale.notConnected,
+                            text = device.displaySerialNo.ifEmpty { StringRes.locale.notConnected },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.caption,
@@ -305,7 +334,7 @@ private fun AppMenu() {
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_phone),
-                        contentDescription = "Current devic",
+                        contentDescription = "current device.",
                     )
                     content.invoke()
                 }
@@ -337,34 +366,9 @@ private fun AppMenu() {
 
     if (deviceSelectedDialog) {
         DeviceSelectedDialog(
-            onDismiss = { deviceSelectedDialog = false }
+            onDismiss = { deviceSelectedDialog = false },
+            model = model,
         )
-    }
-}
-
-// 右侧布局|Right Content
-@Composable
-private fun AppContent() {
-    val navigator = LocalNavigator.current
-    val device = LocalDevice.current!!
-
-    val activityViewModel = viewModel<ActivityViewModel>()
-    val appListViewModel = viewModel<AppListViewModel>()
-    val fileListViewModel = viewModel<FileListViewModel>()
-
-    LaunchedEffect(device) {
-        activityViewModel.dispatch(ActivityAction.OnRefresh(device))
-        appListViewModel.dispatch(AppListAction.GetAppList(device))
-        fileListViewModel.dispatch(FileListAction.GetFileList(device))
-    }
-
-    when (navigator.current) {
-        Navigator.Page.Activity -> ActivityPage()
-        Navigator.Page.App -> AppListPage()
-        Navigator.Page.File -> FileListPage()
-        Navigator.Page.Layout -> LayoutPage()
-        Navigator.Page.Schedule -> SchedulePage()
-        Navigator.Page.Terminal -> TerminalPage()
     }
 }
 
@@ -372,10 +376,10 @@ private fun AppContent() {
 @Composable
 private fun DeviceSelectedDialog(
     onDismiss: () -> Unit,
+    model: AppViewModel,
 ) {
     val windowScope = LocalWindowScope.current
-    val viewModel: AppViewModel = viewModel()
-    val isWaiting by viewModel.isWaiting.collectAsState()
+    val isWaiting by model.isWaiting.collectAsState()
     var wifiToggle by remember { mutableStateOf(false) }
 
     CardDialog(
@@ -411,7 +415,7 @@ private fun DeviceSelectedDialog(
                             ActionIconButton(
                                 enabled = !isWaiting,
                                 onClick = {
-                                    viewModel.dispatch(AppAction.GetDevices)
+                                    model.dispatch(AppAction.Devices)
                                 },
                             ) {
                                 Icon(
@@ -438,13 +442,15 @@ private fun DeviceSelectedDialog(
                 targetState = wifiToggle,
             ) { wifi ->
                 if (wifi) {
-                    DeviceWifiContent {
-                        wifiToggle = false
-                    }
+                    DeviceWifiContent(
+                        onConnectSuccess = { wifiToggle = false },
+                        model = model,
+                    )
                 } else {
-                    DeviceListContent {
-                        onDismiss()
-                    }
+                    DeviceListContent(
+                        onSelected = { onDismiss() },
+                        model = model,
+                    )
                 }
             }
         }
@@ -454,14 +460,14 @@ private fun DeviceSelectedDialog(
 // 设备列表内容|Device list content
 @Composable
 private fun DeviceListContent(
-    onSelected: (device: io.github.adbhelper.adb.entity.Device) -> Unit,
+    onSelected: (device: Device) -> Unit,
+    model: AppViewModel,
 ) {
-    val viewModel: AppViewModel = viewModel()
-    val isWaiting by viewModel.isWaiting.collectAsState()
-    val devices by viewModel.devices.collectAsState()
+    val isWaiting by model.isWaiting.collectAsState()
+    val devices by model.devices.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.dispatch(AppAction.GetDevices)
+        model.dispatch(AppAction.Devices)
     }
 
     if (isWaiting) {
@@ -497,7 +503,7 @@ private fun DeviceListContent(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable {
-                    viewModel.dispatch(AppAction.SetCurrentDevice(device))
+                    model.dispatch(AppAction.CurrentDevice(device))
                     onSelected(device)
                 }
             ) {
@@ -526,10 +532,10 @@ private fun DeviceListContent(
 @Composable
 private fun DeviceWifiContent(
     onConnectSuccess: () -> Unit,
+    model: AppViewModel,
 ) {
-    val viewModel: AppViewModel = viewModel()
-    val isWaiting by viewModel.isWaiting.collectAsState()
-    val ipAndPort by viewModel.ipAndPort.collectAsState(Dispatchers.Main)
+    val isWaiting by model.isWaiting.collectAsState()
+    val ipAndPort by model.ipAndPort.collectAsState(Dispatchers.Main)
     val onConnect = {
         val callback = { message: String ->
             Toast.show(message.trim())
@@ -537,7 +543,7 @@ private fun DeviceWifiContent(
                 onConnectSuccess()
             }
         }
-        viewModel.dispatch(AppAction.Connect(ipAndPort, callback))
+        model.dispatch(AppAction.Connect(ipAndPort, callback))
     }
 
     Column {
@@ -547,7 +553,7 @@ private fun DeviceWifiContent(
             backgroundColor = Color.Transparent,
             singleLine = true,
             onValueChange = {
-                viewModel.dispatch(AppAction.OnChangeIpAndPort(it))
+                model.dispatch(AppAction.ChangeIpAndPort(it))
             },
             modifier = Modifier
                 .onKeyEvent {

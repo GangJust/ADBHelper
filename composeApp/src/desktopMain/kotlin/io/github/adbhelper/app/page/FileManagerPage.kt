@@ -80,8 +80,8 @@ import compose.common.utils.minus
 import compose.common.view.CardTextField
 import io.github.adbhelper.LocalDevice
 import io.github.adbhelper.adb.entity.FileDesc
-import io.github.adbhelper.app.viewmodel.FileListAction
-import io.github.adbhelper.app.viewmodel.FileListViewModel
+import io.github.adbhelper.app.viewmodel.FileManagerAction
+import io.github.adbhelper.app.viewmodel.FileManagerViewModel
 import io.github.adbhelper.common.compose.CardContentDialog
 import io.github.adbhelper.common.compose.CardMessageDialog
 import io.github.adbhelper.common.compose.SelectionText
@@ -91,6 +91,7 @@ import io.github.adbhelper.common.res.IconRes
 import io.github.adbhelper.common.res.icons.MoreVert
 import io.github.adbhelper.compose.ActionIconButton
 import io.github.adbhelper.compose.DragAndDropContainer
+import io.github.adbhelper.composeViewModel
 import io.github.adbhelper.entity.Bookmark
 import io.github.adbhelper.i18n.StringRes
 import io.github.adbhelper.mvi.MsgCallback
@@ -103,35 +104,42 @@ import java.awt.datatransfer.StringSelection
 import java.net.URI
 
 @Composable
-fun FileListPage() {
+fun FileManagerPage(
+    model: FileManagerViewModel = composeViewModel(),
+) {
+    val device = LocalDevice.current
+    LaunchedEffect(device) {
+        model.dispatch(FileManagerAction.GetFileList(device))
+    }
+
     Scaffold(
         topBar = {
-            TopBar()
+            TopBar(model)
         }
     ) {
-        FileDropContainer {
-            FileList()
+        FileDropContainer(model) {
+            FileList(model)
         }
     }
 
-    BookmarkDialog()
+    BookmarkDialog(model)
 
-    BookmarkEditDialog()
+    BookmarkEditDialog(model)
 
-    DetailDialog()
+    DetailDialog(model)
 
-    DeleteDialog()
+    DeleteDialog(model)
 
-    LoadingDialog()
+    LoadingDialog(model)
 }
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
-private fun TopBar() {
-    val viewModel: FileListViewModel = viewModel()
-    val device = LocalDevice.current!!
-
-    val currentPath by viewModel.currPath.collectAsState(Dispatchers.Main)
+private fun TopBar(
+    model: FileManagerViewModel,
+) {
+    val device = LocalDevice.current
+    val currentPath by model.currPath.collectAsState(Dispatchers.Main)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -143,7 +151,7 @@ private fun TopBar() {
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.padding(end = 4.dp),
             onClick = {
-                viewModel.dispatch(FileListAction.GetFileList(device, "/"))
+                model.dispatch(FileManagerAction.GetFileList(device, "/"))
             },
         ) {
             Icon(
@@ -157,7 +165,7 @@ private fun TopBar() {
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.padding(horizontal = 4.dp),
             onClick = {
-                viewModel.dispatch(FileListAction.GetFileList(device, "/storage/emulated/0/"))
+                model.dispatch(FileManagerAction.GetFileList(device, "/storage/emulated/0/"))
             },
         ) {
             Icon(
@@ -171,7 +179,7 @@ private fun TopBar() {
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.padding(horizontal = 4.dp),
             onClick = {
-                viewModel.dispatch(FileListAction.BookmarkDialog(true))
+                model.dispatch(FileManagerAction.BookmarkDialog(true))
             }
         ) {
             Icon(
@@ -192,7 +200,7 @@ private fun TopBar() {
                 singleLine = true,
                 modifier = Modifier.padding(vertical = 12.dp, horizontal = 24.dp),
                 onValueChange = {
-                    viewModel.dispatch(FileListAction.OnCurrPath(it))
+                    model.dispatch(FileManagerAction.CurrPath(it))
                 },
             )
         }
@@ -201,7 +209,7 @@ private fun TopBar() {
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.padding(start = 4.dp),
             onClick = {
-                viewModel.dispatch(FileListAction.GetFileList(device, currentPath))
+                model.dispatch(FileManagerAction.GetFileList(device, currentPath))
             },
         ) {
             Icon(
@@ -215,7 +223,7 @@ private fun TopBar() {
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.padding(horizontal = 4.dp),
             onClick = {
-                viewModel.dispatch(FileListAction.GetFileList(device, currentPath))
+                model.dispatch(FileManagerAction.GetFileList(device, currentPath))
             },
         ) {
             Icon(
@@ -230,12 +238,11 @@ private fun TopBar() {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun FileDropContainer(
+    model: FileManagerViewModel,
     content: @Composable () -> Unit,
 ) {
     // val windowScope = LocalWindowScope.current
-    val viewModel: FileListViewModel = viewModel()
-    val device = LocalDevice.current!!
-
+    val device = LocalDevice.current
     var isDragging by remember { mutableStateOf(false) }
 
     /* DropContainer(
@@ -319,7 +326,7 @@ private fun FileDropContainer(
                         val msgCallback = MsgCallback { msg: String ->
                             Toast.show(msg)
                         }
-                        viewModel.dispatch(FileListAction.OnPush(device, path, msgCallback))
+                        model.dispatch(FileManagerAction.Push(device, path, msgCallback))
                     }
                 }
                 true
@@ -350,12 +357,13 @@ private fun FileDropContainer(
 
 // 文件列表|File List
 @Composable
-private fun FileList() {
-    val viewModel: FileListViewModel = viewModel()
-    val device = LocalDevice.current!!
+private fun FileList(
+    model: FileManagerViewModel,
+) {
+    val device = LocalDevice.current
     val scrollState = rememberLazyListState()
 
-    val fileList by viewModel.fileList.collectAsState()
+    val fileList by model.fileList.collectAsState()
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -369,16 +377,16 @@ private fun FileList() {
                     desc = it,
                     onPrimaryClick = { desc ->
                         if (desc.isFile || desc.isLinkFile) {
-                            viewModel.dispatch(FileListAction.DetailDialog(desc))
+                            model.dispatch(FileManagerAction.DetailDialog(desc))
                         } else {
-                            viewModel.dispatch(FileListAction.GoDirectory(device, desc))
+                            model.dispatch(FileManagerAction.GoDirectory(device, desc))
                         }
                     },
                     onSecondaryClick = { desc ->
                         if (desc.isSuperior) // 上级目录
                             return@FileListItem
 
-                        viewModel.dispatch(FileListAction.DetailDialog(desc))
+                        model.dispatch(FileManagerAction.DetailDialog(desc))
                     },
                 )
             }
@@ -508,18 +516,19 @@ private fun FileListItemIcon(
 
 // 详细对话框|Detail Dialog
 @Composable
-private fun DetailDialog() {
-    val viewModel: FileListViewModel = viewModel()
+private fun DetailDialog(
+    model: FileManagerViewModel,
+) {
     val coroutineScope = rememberCoroutineScope()
     val windowScope = LocalWindowScope.current
     val clipboard = LocalClipboard.current
-    val device = LocalDevice.current!!
+    val device = LocalDevice.current
 
-    val desc by viewModel.showDetail.collectAsState()
+    val desc by model.showDetail.collectAsState()
     desc ?: return // 无数据不显示
 
     val onDismiss = {
-        viewModel.dispatch(FileListAction.DetailDialog(null))
+        model.dispatch(FileManagerAction.DetailDialog(null))
     }
 
     CardContentDialog(
@@ -539,8 +548,8 @@ private fun DetailDialog() {
                             val msgCallback = MsgCallback { msg: String ->
                                 Toast.show(msg)
                             }
-                            viewModel.dispatch(
-                                FileListAction.OnAddBookmark(
+                            model.dispatch(
+                                FileManagerAction.AddBookmark(
                                     device,
                                     Bookmark(desc!!.name, desc!!.absolutePath, desc!!.kind),
                                     msgCallback,
@@ -586,7 +595,7 @@ private fun DetailDialog() {
             TextButton(
                 onClick = {
                     onDismiss.invoke()
-                    viewModel.dispatch(FileListAction.DeleteDialog(desc))
+                    model.dispatch(FileManagerAction.DeleteDialog(desc))
                 },
                 modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
             ) {
@@ -608,7 +617,7 @@ private fun DetailDialog() {
                         Toast.show(msg)
                         onDismiss.invoke()
                     }
-                    viewModel.dispatch(FileListAction.OnPull(device, desc!!, msgCallback))
+                    model.dispatch(FileManagerAction.Pull(device, desc!!, msgCallback))
                 },
                 modifier = Modifier.padding(end = 24.dp, bottom = 8.dp)
             ) {
@@ -658,15 +667,15 @@ private fun DetailItemAttribute(
 
 // 删除对话框|Delete Dialog
 @Composable
-private fun DeleteDialog() {
-    val viewModel: FileListViewModel = viewModel()
-    val device = LocalDevice.current!!
-
-    val desc by viewModel.showDelete.collectAsState()
+private fun DeleteDialog(
+    model: FileManagerViewModel,
+) {
+    val device = LocalDevice.current
+    val desc by model.showDelete.collectAsState()
     desc ?: return // 无数据不显示
 
     val onDismiss = {
-        viewModel.dispatch(FileListAction.DeleteDialog(null))
+        model.dispatch(FileManagerAction.DeleteDialog(null))
     }
 
     CardMessageDialog(
@@ -681,31 +690,32 @@ private fun DeleteDialog() {
                 Toast.show(msg)
                 onDismiss.invoke()
             }
-            viewModel.dispatch(FileListAction.OnDelete(device, desc!!, msgCallback))
+            model.dispatch(FileManagerAction.Delete(device, desc!!, msgCallback))
         },
     )
 }
 
 // 书签对话框|Bookmark Dialog
 @Composable
-private fun BookmarkDialog() {
-    val viewModel: FileListViewModel = viewModel()
+private fun BookmarkDialog(
+    model: FileManagerViewModel,
+) {
     val windowScope = LocalWindowScope.current
-    val device = LocalDevice.current!!
+    val device = LocalDevice.current
 
-    val isShowing by viewModel.showBookmark.collectAsState()
+    val isShowing by model.showBookmark.collectAsState()
     if (!isShowing)
         return
 
     val onDismiss = {
-        viewModel.dispatch(FileListAction.BookmarkDialog(false))
+        model.dispatch(FileManagerAction.BookmarkDialog(false))
     }
 
     LaunchedEffect(Unit) {
-        viewModel.dispatch(FileListAction.GetBookmarks(device))
+        model.dispatch(FileManagerAction.GetBookmarks(device))
     }
 
-    val bookmarkList by viewModel.bookmarks.collectAsState()
+    val bookmarkList by model.bookmarks.collectAsState()
 
     CardContentDialog(
         onDismiss = { /* 不响应|unresponsive */ },
@@ -750,18 +760,18 @@ private fun BookmarkDialog() {
                 BookmarkItem(
                     bookmark = it,
                     onClick = { bookmark ->
-                        viewModel.dispatch(FileListAction.GoBookmark(device, bookmark))
+                        model.dispatch(FileManagerAction.GoBookmark(device, bookmark))
                         onDismiss.invoke()
                     },
                     onEdit = { bookmark ->
-                        viewModel.dispatch(FileListAction.BookmarkEditDialog(bookmark))
+                        model.dispatch(FileManagerAction.BookmarkEditDialog(bookmark))
                     },
                     onDelete = { bookmark ->
                         val msgCallback = MsgCallback { msg: String ->
                             Toast.show(msg)
                         }
-                        viewModel.dispatch(
-                            FileListAction.OnDeleteBookmark(
+                        model.dispatch(
+                            FileManagerAction.DeleteBookmark(
                                 device,
                                 bookmark,
                                 msgCallback
@@ -866,14 +876,15 @@ private fun BookmarkItem(
 
 // 书签编辑对话框|Bookmark Edit Dialog
 @Composable
-private fun BookmarkEditDialog() {
-    val viewModel: FileListViewModel = viewModel()
-    val device = LocalDevice.current!!
-    val bookmark by viewModel.showBookmarkEdit.collectAsState()
+private fun BookmarkEditDialog(
+    model: FileManagerViewModel,
+) {
+    val device = LocalDevice.current
+    val bookmark by model.showBookmarkEdit.collectAsState()
     bookmark ?: return // 无数据不显示
 
     val onDismiss = {
-        viewModel.dispatch(FileListAction.BookmarkEditDialog(null))
+        model.dispatch(FileManagerAction.BookmarkEditDialog(null))
     }
 
     var name by remember { mutableStateOf(bookmark!!.name) }
@@ -904,8 +915,8 @@ private fun BookmarkEditDialog() {
                     val msgCallback = MsgCallback { msg: String ->
                         Toast.show(msg)
                     }
-                    viewModel.dispatch(
-                        FileListAction.OnSaveBookmark(
+                    model.dispatch(
+                        FileManagerAction.SaveBookmark(
                             device,
                             bookmark!!.copy(name = name, path = path),
                             msgCallback,
@@ -948,9 +959,10 @@ private fun BookmarkEditDialog() {
 
 // 加载对话框|Loading Dialog
 @Composable
-private fun LoadingDialog() {
-    val viewModel: FileListViewModel = viewModel()
-    val isWaiting by viewModel.isWaiting.collectAsState()
+private fun LoadingDialog(
+    model: FileManagerViewModel,
+) {
+    val isWaiting by model.isWaiting.collectAsState()
 
     WaitingDialog(
         isWaiting = isWaiting
