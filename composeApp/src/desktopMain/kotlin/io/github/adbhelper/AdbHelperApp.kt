@@ -185,6 +185,7 @@ fun AdbHelperApp(
                             startDestination = AppNavigator.Activity,
                         ) {
                             composable<AppNavigator.Activity> {
+                                // NavHost composable will generate multiple calls, which is an expected situation. For more information, see: https://issuetracker.google.com/issues/225987040
                                 CheckContainer(device) {
                                     ActivityPage()
                                 }
